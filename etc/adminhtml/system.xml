@@ -1,0 +1,167 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="panth" translate="label" sortOrder="400">
+            <label>Panth Infotech</label>
+        </tab>
+        <section id="panth_errormonitor" translate="label" type="text" sortOrder="60"
+                 showInDefault="1" showInWebsite="1" showInStore="1">
+            <label>Error Monitor</label>
+            <tab>panth</tab>
+            <resource>Panth_ErrorMonitor::system_config</resource>
+
+            <group id="general" translate="label" type="text" sortOrder="10"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>General</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Error Monitor</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Master switch. When off, no errors are captured and no emails are sent.</comment>
+                </field>
+            </group>
+
+            <group id="php_capture" translate="label" type="text" sortOrder="20"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>PHP Error Capture</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Capture PHP Exceptions</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Records exceptions and errors that Magento writes to the system log.</comment>
+                </field>
+                <field id="min_severity" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Minimum Severity to Capture</label>
+                    <source_model>Panth\ErrorMonitor\Model\Config\Source\Severity</source_model>
+                    <comment>Only errors at this level or more severe are stored.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+            </group>
+
+            <group id="js_capture" translate="label" type="text" sortOrder="30"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>JavaScript Error Capture (Storefront)</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Capture Storefront JS Errors</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Injects a tiny, CSP-safe collector that reports uncaught JS errors and promise rejections.</comment>
+                </field>
+                <field id="sample_rate" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Sample Rate (%)</label>
+                    <validate>validate-digits validate-digits-range digits-range-0-100</validate>
+                    <comment>Percentage of visitors whose JS errors are reported (1-100). Lower this on very high-traffic sites.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="rate_limit_per_minute" translate="label comment" type="text" sortOrder="30"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Max Reports per IP per Minute</label>
+                    <validate>validate-digits</validate>
+                    <comment>Server-side rate limit. Requests beyond this are silently dropped to prevent abuse/flooding.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="max_body_kb" translate="label comment" type="text" sortOrder="40"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Max Report Body Size (KB)</label>
+                    <validate>validate-digits</validate>
+                    <comment>Larger payloads are rejected before parsing.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="ignore_patterns" translate="label comment" type="textarea" sortOrder="50"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Ignore Messages Containing</label>
+                    <comment>One substring per line. Matching errors (PHP and JS) are dropped — useful for known browser noise.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+            </group>
+
+            <group id="email" translate="label" type="text" sortOrder="40"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Email Alerts</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Send Email Alerts</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Alerts are sent by cron, never synchronously. Each error group is emailed at most once per day.</comment>
+                </field>
+                <field id="mode" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Delivery Mode</label>
+                    <source_model>Panth\ErrorMonitor\Model\Config\Source\EmailMode</source_model>
+                    <comment>Digest: one email per cron run listing all new/changed errors (recommended). Individual: one email per error group.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="recipients" translate="label comment" type="textarea" sortOrder="30"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Recipient Email(s)</label>
+                    <validate>required-entry</validate>
+                    <comment>Comma- or newline-separated. Invalid addresses are skipped.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="sender" translate="label" type="select" sortOrder="40"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Email Sender Identity</label>
+                    <source_model>Magento\Config\Model\Config\Source\Email\Identity</source_model>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="min_severity" translate="label comment" type="select" sortOrder="50"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Minimum Severity to Email</label>
+                    <source_model>Panth\ErrorMonitor\Model\Config\Source\Severity</source_model>
+                    <comment>Lower-severity errors are still stored, just not emailed.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="max_per_run" translate="label comment" type="text" sortOrder="60"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Max Error Groups per Run</label>
+                    <validate>validate-digits</validate>
+                    <comment>Hard cap on how many error groups a single cron run will email about. Prevents inbox flooding during incidents.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+            </group>
+
+            <group id="privacy" translate="label" type="text" sortOrder="50"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Privacy</label>
+                <field id="store_ip" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Store Client IP</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When off, no IP address is stored on error events.</comment>
+                </field>
+                <field id="anonymize_ip" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Anonymise IP</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Masks the last octet (IPv4) / last 80 bits (IPv6) before storing, for GDPR compliance.</comment>
+                    <depends><field id="store_ip">1</field></depends>
+                </field>
+            </group>
+
+            <group id="retention" translate="label" type="text" sortOrder="60"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Data Retention</label>
+                <field id="event_days" translate="label comment" type="text" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Keep Individual Events (days)</label>
+                    <validate>validate-digits</validate>
+                    <comment>Occurrence rows older than this are deleted by the daily cleanup cron. Group aggregates are kept.</comment>
+                </field>
+                <field id="resolved_group_days" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Keep Resolved Groups (days)</label>
+                    <validate>validate-digits</validate>
+                    <comment>Resolved error groups not seen for this many days are removed entirely.</comment>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

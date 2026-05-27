@@ -1,0 +1,100 @@
+<?php
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ *
+ * @var \Panth\ErrorMonitor\Block\Adminhtml\Error\View $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+$group = $block->getGroup();
+?>
+<?php if (!$group->getId()): ?>
+    <div class="message message-error"><?= $escaper->escapeHtml(__('This error no longer exists.')) ?></div>
+<?php else: ?>
+<div class="panth-error-detail">
+    <div style="margin-bottom:16px;">
+        <a class="action-default" href="<?= $escaper->escapeUrl($block->getBackUrl()) ?>">&larr; <?= $escaper->escapeHtml(__('Back to Error Log')) ?></a>
+        <a class="action-default" style="margin-left:8px;" href="<?= $escaper->escapeUrl($block->getResolveUrl()) ?>"><?= $escaper->escapeHtml(__('Mark Resolved')) ?></a>
+        <a class="action-default" style="margin-left:8px;" href="<?= $escaper->escapeUrl($block->getIgnoreUrl()) ?>"><?= $escaper->escapeHtml(__('Ignore')) ?></a>
+    </div>
+
+    <div class="admin__page-section">
+        <table class="data-table">
+            <tbody>
+                <tr>
+                    <th style="width:180px;"><?= $escaper->escapeHtml(__('Status')) ?></th>
+                    <td><?= $escaper->escapeHtml($block->statusLabel((int)$group->getData('status'))) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $escaper->escapeHtml(__('Source')) ?></th>
+                    <td><?= $escaper->escapeHtml(strtoupper((string)$group->getData('source'))) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $escaper->escapeHtml(__('Severity')) ?></th>
+                    <td><?= $escaper->escapeHtml(ucfirst((string)$group->getData('severity'))) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $escaper->escapeHtml(__('Type')) ?></th>
+                    <td><?= $escaper->escapeHtml((string)$group->getData('error_type')) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $escaper->escapeHtml(__('Message')) ?></th>
+                    <td><?= $escaper->escapeHtml((string)$group->getData('message')) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $escaper->escapeHtml(__('File / Source')) ?></th>
+                    <td style="font-family:monospace;"><?= $escaper->escapeHtml((string)$group->getData('file')) ?><?php if ((int)$group->getData('line')): ?>:<?= (int)$group->getData('line') ?><?php endif; ?></td>
+                </tr>
+                <tr>
+                    <th><?= $escaper->escapeHtml(__('Occurrences')) ?></th>
+                    <td><?= (int)$group->getData('occurrence_count') ?></td>
+                </tr>
+                <tr>
+                    <th><?= $escaper->escapeHtml(__('First Seen (UTC)')) ?></th>
+                    <td><?= $escaper->escapeHtml((string)$group->getData('first_seen_at')) ?></td>
+                </tr>
+                <tr>
+                    <th><?= $escaper->escapeHtml(__('Last Seen (UTC)')) ?></th>
+                    <td><?= $escaper->escapeHtml((string)$group->getData('last_seen_at')) ?></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="admin__page-section">
+        <div class="admin__page-section-title">
+            <span class="title"><?= $escaper->escapeHtml(__('Recent Occurrences (latest %1)', 50)) ?></span>
+        </div>
+        <?php $events = $block->getRecentEvents(); ?>
+        <?php if (!$events): ?>
+            <p><?= $escaper->escapeHtml(__('No individual occurrences retained (they may have aged out).')) ?></p>
+        <?php else: ?>
+            <?php foreach ($events as $event): ?>
+                <div style="border:1px solid #e3e3e3;border-radius:6px;padding:12px;margin-bottom:12px;">
+                    <p style="margin:0 0 6px;color:#666;font-size:12px;">
+                        <?= $escaper->escapeHtml((string)$event->getData('created_at')) ?> UTC
+                        <?php if ($event->getData('http_method')): ?>
+                            &middot; <?= $escaper->escapeHtml((string)$event->getData('http_method')) ?>
+                        <?php endif; ?>
+                        <?php if ($event->getData('ip')): ?>
+                            &middot; IP <?= $escaper->escapeHtml((string)$event->getData('ip')) ?>
+                        <?php endif; ?>
+                    </p>
+                    <?php if ($event->getData('url')): ?>
+                        <p style="margin:0 0 6px;font-family:monospace;font-size:12px;word-break:break-all;"><?= $escaper->escapeHtml((string)$event->getData('url')) ?></p>
+                    <?php endif; ?>
+                    <?php if ($event->getData('user_agent')): ?>
+                        <p style="margin:0 0 6px;color:#888;font-size:11px;"><?= $escaper->escapeHtml((string)$event->getData('user_agent')) ?></p>
+                    <?php endif; ?>
+                    <?php if ($event->getData('stack_trace')): ?>
+                        <pre style="background:#1e293b;color:#e2e8f0;padding:10px;border-radius:4px;overflow:auto;max-height:300px;font-size:12px;"><?= $escaper->escapeHtml((string)$event->getData('stack_trace')) ?></pre>
+                    <?php endif; ?>
+                    <?php $ctx = $block->formatContext($event->getData('context')); ?>
+                    <?php if ($ctx !== ''): ?>
+                        <pre style="background:#f1f5f9;padding:10px;border-radius:4px;overflow:auto;font-size:12px;"><?= $escaper->escapeHtml($ctx) ?></pre>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Email:etc/email_templates.xsd">
+    <template id="panth_errormonitor_alert_template"
+              label="Panth Error Monitor: Error Alert / Digest"
+              file="error_alert.html"
+              type="html"
+              module="Panth_ErrorMonitor"
+              area="frontend"/>
+</config>

@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!--
+        Attach our DB handler to Magento's main system logger. It receives
+        every log record at ERROR level and above (which includes every
+        uncaught exception Magento funnels through the logger) and persists
+        it to the grouped error tables.
+
+        ErrorRecorder is injected as a Proxy: the system logger is built very
+        early in the bootstrap, long before the database connection is ready,
+        so we must NOT force-instantiate the recorder (and its resource model)
+        at that point. The Proxy defers construction until the first error is
+        actually written.
+    -->
+    <type name="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="panth_error_monitor_db" xsi:type="object">Panth\ErrorMonitor\Logger\DbHandler</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="Panth\ErrorMonitor\Logger\DbHandler">
+        <arguments>
+            <argument name="recorder" xsi:type="object">Panth\ErrorMonitor\Service\ErrorRecorder\Proxy</argument>
+            <argument name="ipAnonymizer" xsi:type="object">Panth\ErrorMonitor\Service\IpAnonymizer\Proxy</argument>
+        </arguments>
+    </type>
+
+    <!-- Grid collections for the admin error review listing. -->
+    <type name="Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup\Grid\Collection">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">panth_error_group</argument>
+            <argument name="resourceModel" xsi:type="string">Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup</argument>
+        </arguments>
+    </type>
+
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="panth_errormonitor_group_listing_data_source" xsi:type="string">Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Console command: panth:errormonitor:cleanup -->
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="panth_errormonitor_cleanup" xsi:type="object">Panth\ErrorMonitor\Console\Command\CleanupCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

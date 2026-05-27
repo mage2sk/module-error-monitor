@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ *
+ * Two tables drive the "smart" grouping model:
+ *   - panth_error_group : one row per UNIQUE error fingerprint. Holds the
+ *     aggregate (occurrence_count, first/last seen, status, daily email
+ *     dedupe marker). This is what the admin reviews and what email alerts
+ *     are built from.
+ *   - panth_error_event : individual occurrences linked to a group. Pruned
+ *     by the retention cron so the table can never grow unbounded.
+ */
+-->
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <table name="panth_error_group" resource="default" engine="innodb"
+           comment="Panth Error Monitor — grouped/deduplicated errors">
+        <column xsi:type="int" name="group_id" unsigned="true" nullable="false" identity="true" comment="Group ID"/>
+        <column xsi:type="varchar" name="fingerprint" nullable="false" length="64"
+                comment="Stable hash identifying a unique error (drives dedupe)"/>
+        <column xsi:type="varchar" name="source" nullable="false" length="8" default="php" comment="php | js"/>
+        <column xsi:type="varchar" name="severity" nullable="false" length="16" default="error"
+                comment="emergency|alert|critical|error|warning|notice|info"/>
+        <column xsi:type="varchar" name="error_type" nullable="true" length="191"
+                comment="Exception class or JS error name"/>
+        <column xsi:type="text" name="message" nullable="true" comment="Representative (truncated) message"/>
+        <column xsi:type="varchar" name="file" nullable="true" length="512" comment="Originating file / JS source URL"/>
+        <column xsi:type="int" name="line" unsigned="true" nullable="true" comment="Line number"/>
+        <column xsi:type="smallint" name="status" unsigned="true" nullable="false" default="0"
+                comment="0 new | 1 resolved | 2 ignored"/>
+        <column xsi:type="int" name="occurrence_count" unsigned="true" nullable="false" default="0"
+                comment="Total occurrences seen"/>
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" default="0"
+                comment="Store view where last seen; 0 = unknown/global"/>
+        <column xsi:type="timestamp" name="first_seen_at" on_update="false" nullable="true" comment="First occurrence (UTC)"/>
+        <column xsi:type="timestamp" name="last_seen_at" on_update="false" nullable="true" comment="Most recent occurrence (UTC)"/>
+        <column xsi:type="date" name="last_emailed_date" nullable="true"
+                comment="UTC date this group was last emailed — daily dedupe marker"/>
+        <column xsi:type="int" name="emailed_count" unsigned="true" nullable="false" default="0"
+                comment="Number of alert emails sent for this group"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="group_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="PANTH_ERROR_GROUP_FINGERPRINT">
+            <column name="fingerprint"/>
+        </constraint>
+        <index referenceId="PANTH_ERROR_GROUP_STATUS_LASTSEEN" indexType="btree">
+            <column name="status"/>
+            <column name="last_seen_at"/>
+        </index>
+        <index referenceId="PANTH_ERROR_GROUP_SOURCE_SEVERITY" indexType="btree">
+            <column name="source"/>
+            <column name="severity"/>
+        </index>
+        <index referenceId="PANTH_ERROR_GROUP_LAST_EMAILED" indexType="btree">
+            <column name="last_emailed_date"/>
+        </index>
+    </table>
+
+    <table name="panth_error_event" resource="default" engine="innodb"
+           comment="Panth Error Monitor — individual error occurrences">
+        <column xsi:type="int" name="event_id" unsigned="true" nullable="false" identity="true" comment="Event ID"/>
+        <column xsi:type="int" name="group_id" unsigned="true" nullable="false" comment="FK panth_error_group.group_id"/>
+        <column xsi:type="text" name="url" nullable="true" comment="Request URL / page where the error occurred"/>
+        <column xsi:type="text" name="referer" nullable="true" comment="HTTP referer"/>
+        <column xsi:type="varchar" name="user_agent" nullable="true" length="512" comment="Client user agent"/>
+        <column xsi:type="varchar" name="ip" nullable="true" length="45" comment="Client IP (optionally anonymised)"/>
+        <column xsi:type="varchar" name="http_method" nullable="true" length="10" comment="HTTP method"/>
+        <column xsi:type="mediumtext" name="stack_trace" nullable="true" comment="Stack trace"/>
+        <column xsi:type="text" name="context" nullable="true" comment="JSON context (lineno, colno, channel, etc.)"/>
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" default="0" comment="Store view id"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="event_id"/>
+        </constraint>
+        <index referenceId="PANTH_ERROR_EVENT_GROUP" indexType="btree">
+            <column name="group_id"/>
+        </index>
+        <index referenceId="PANTH_ERROR_EVENT_CREATED" indexType="btree">
+            <column name="created_at"/>
+        </index>
+        <constraint xsi:type="foreign" referenceId="PANTH_ERROR_EVENT_GROUP_FK"
+                    table="panth_error_event" column="group_id"
+                    referenceTable="panth_error_group" referenceColumn="group_id"
+                    onDelete="CASCADE"/>
+    </table>
+</schema>

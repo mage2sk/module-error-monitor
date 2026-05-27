@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ *
+ * Safe defaults: capture is ON, email alerts are OFF until an admin enters
+ * recipients (so no surprise mail). Aggressive throttling out of the box.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <panth_errormonitor>
+            <general>
+                <enabled>1</enabled>
+            </general>
+            <php_capture>
+                <enabled>1</enabled>
+                <min_severity>error</min_severity>
+            </php_capture>
+            <js_capture>
+                <enabled>1</enabled>
+                <sample_rate>100</sample_rate>
+                <rate_limit_per_minute>30</rate_limit_per_minute>
+                <max_body_kb>16</max_body_kb>
+                <ignore_patterns>Script error.
+ResizeObserver loop limit exceeded
+ResizeObserver loop completed with undelivered notifications.
+Non-Error promise rejection captured</ignore_patterns>
+            </js_capture>
+            <email>
+                <enabled>0</enabled>
+                <mode>digest</mode>
+                <recipients></recipients>
+                <sender>general</sender>
+                <min_severity>error</min_severity>
+                <max_per_run>20</max_per_run>
+            </email>
+            <privacy>
+                <store_ip>1</store_ip>
+                <anonymize_ip>1</anonymize_ip>
+            </privacy>
+            <retention>
+                <event_days>30</event_days>
+                <resolved_group_days>90</resolved_group_days>
+            </retention>
+        </panth_errormonitor>
+    </default>
+</config>

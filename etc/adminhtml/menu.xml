@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="Panth_ErrorMonitor::errors"
+             title="Error Monitor"
+             module="Panth_ErrorMonitor"
+             sortOrder="96"
+             parent="Panth_Core::panth_extensions"
+             resource="Panth_ErrorMonitor::errors"/>
+        <add id="Panth_ErrorMonitor::error_log"
+             title="Error Log"
+             module="Panth_ErrorMonitor"
+             sortOrder="10"
+             parent="Panth_ErrorMonitor::errors"
+             action="panth_errormonitor/error/index"
+             resource="Panth_ErrorMonitor::view"/>
+        <add id="Panth_ErrorMonitor::error_config"
+             title="Configuration"
+             module="Panth_ErrorMonitor"
+             sortOrder="20"
+             parent="Panth_ErrorMonitor::errors"
+             action="adminhtml/system_config/edit/section/panth_errormonitor"
+             resource="Panth_ErrorMonitor::system_config"/>
+    </menu>
+</config>

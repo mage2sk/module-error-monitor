@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ */
+-->
+<listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">panth_errormonitor_group_listing.panth_errormonitor_group_listing_data_source</item>
+        </item>
+    </argument>
+    <settings>
+        <spinner>panth_errormonitor_group_columns</spinner>
+        <deps>
+            <dep>panth_errormonitor_group_listing.panth_errormonitor_group_listing_data_source</dep>
+        </deps>
+    </settings>
+
+    <dataSource name="panth_errormonitor_group_listing_data_source"
+                component="Magento_Ui/js/grid/provider">
+        <settings>
+            <storageConfig>
+                <param name="indexField" xsi:type="string">group_id</param>
+            </storageConfig>
+            <updateUrl path="mui/index/render"/>
+        </settings>
+        <aclResource>Panth_ErrorMonitor::view</aclResource>
+        <dataProvider name="panth_errormonitor_group_listing_data_source"
+                      class="Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider">
+            <settings>
+                <requestFieldName>group_id</requestFieldName>
+                <primaryFieldName>group_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+
+    <listingToolbar name="listing_top">
+        <settings>
+            <sticky>true</sticky>
+        </settings>
+        <bookmark name="bookmarks"/>
+        <columnsControls name="columns_controls"/>
+        <filters name="listing_filters"/>
+        <massaction name="listing_massaction">
+            <action name="resolve">
+                <settings>
+                    <confirm>
+                        <message translate="true">Mark the selected errors as resolved?</message>
+                        <title translate="true">Resolve errors</title>
+                    </confirm>
+                    <url path="panth_errormonitor/error/massResolve"/>
+                    <type>resolve</type>
+                    <label translate="true">Resolve</label>
+                </settings>
+            </action>
+            <action name="ignore">
+                <settings>
+                    <confirm>
+                        <message translate="true">Ignore the selected errors? They will keep counting but won't be emailed.</message>
+                        <title translate="true">Ignore errors</title>
+                    </confirm>
+                    <url path="panth_errormonitor/error/massIgnore"/>
+                    <type>ignore</type>
+                    <label translate="true">Ignore</label>
+                </settings>
+            </action>
+            <action name="delete">
+                <settings>
+                    <confirm>
+                        <message translate="true">Delete the selected errors and all their recorded occurrences?</message>
+                        <title translate="true">Delete errors</title>
+                    </confirm>
+                    <url path="panth_errormonitor/error/massDelete"/>
+                    <type>delete</type>
+                    <label translate="true">Delete</label>
+                </settings>
+            </action>
+        </massaction>
+        <paging name="listing_paging"/>
+    </listingToolbar>
+
+    <columns name="panth_errormonitor_group_columns">
+        <selectionsColumn name="ids">
+            <settings>
+                <indexField>group_id</indexField>
+            </settings>
+        </selectionsColumn>
+
+        <column name="group_id">
+            <settings>
+                <filter>textRange</filter>
+                <sorting>desc</sorting>
+                <label translate="true">ID</label>
+            </settings>
+        </column>
+
+        <column name="source" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="Panth\ErrorMonitor\Model\Config\Source\Source"/>
+                <dataType>select</dataType>
+                <filter>select</filter>
+                <label translate="true">Source</label>
+            </settings>
+        </column>
+
+        <column name="severity" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="Panth\ErrorMonitor\Model\Config\Source\Severity"/>
+                <dataType>select</dataType>
+                <filter>select</filter>
+                <label translate="true">Severity</label>
+            </settings>
+        </column>
+
+        <column name="error_type">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Type</label>
+            </settings>
+        </column>
+
+        <column name="message">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Message</label>
+                <bodyTmpl>ui/grid/cells/text</bodyTmpl>
+            </settings>
+        </column>
+
+        <column name="occurrence_count">
+            <settings>
+                <filter>textRange</filter>
+                <label translate="true">Occurrences</label>
+            </settings>
+        </column>
+
+        <column name="first_seen_at" class="Magento\Ui\Component\Listing\Columns\Date" component="Magento_Ui/js/grid/columns/date">
+            <settings>
+                <filter>dateRange</filter>
+                <dataType>date</dataType>
+                <label translate="true">First Seen</label>
+            </settings>
+        </column>
+
+        <column name="last_seen_at" class="Magento\Ui\Component\Listing\Columns\Date" component="Magento_Ui/js/grid/columns/date">
+            <settings>
+                <filter>dateRange</filter>
+                <dataType>date</dataType>
+                <label translate="true">Last Seen</label>
+            </settings>
+        </column>
+
+        <column name="status" component="Magento_Ui/js/grid/columns/select">
+            <settings>
+                <options class="Panth\ErrorMonitor\Model\Config\Source\Status"/>
+                <dataType>select</dataType>
+                <filter>select</filter>
+                <label translate="true">Status</label>
+            </settings>
+        </column>
+
+        <actionsColumn name="actions" class="Panth\ErrorMonitor\Ui\Component\Listing\Column\Actions">
+            <settings>
+                <indexField>group_id</indexField>
+                <resizeEnabled>false</resizeEnabled>
+            </settings>
+        </actionsColumn>
+    </columns>
+</listing>
