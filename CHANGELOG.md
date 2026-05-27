@@ -3,6 +3,19 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-05-27
+
+### Fixed
+- **Monolog 2 / Magento 2.4.6 compatibility.** The PHP log handler declared
+  `write(LogRecord $record)` (Monolog 3 only), causing a fatal
+  "Declaration ... must be compatible with AbstractProcessingHandler::write(array $record)"
+  on Magento 2.4.6, which ships Monolog 2. The handler now accepts an untyped
+  record and normalises Monolog 2 arrays and Monolog 3 LogRecord objects at
+  runtime, and no longer references the Monolog 3-only `Monolog\Level` enum.
+- Alert email now renders in the frontend area so the shared
+  `design/email` header/footer templates resolve (previously failed with
+  "Template file 'header.html' is not found").
+
 ## [1.0.0] - 2026-05-25
 
 ### Added
