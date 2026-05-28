@@ -30,11 +30,12 @@ Non-Error promise rejection captured</ignore_patterns>
             </js_capture>
             <email>
                 <enabled>0</enabled>
-                <mode>digest</mode>
+                <mode>daily_summary</mode>
+                <send_hour>23</send_hour>
                 <recipients></recipients>
                 <sender>general</sender>
                 <min_severity>error</min_severity>
-                <max_per_run>20</max_per_run>
+                <max_per_run>50</max_per_run>
             </email>
             <privacy>
                 <store_ip>1</store_ip>

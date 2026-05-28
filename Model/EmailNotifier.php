@@ -2,19 +2,22 @@
 /**
  * Copyright © Panth Infotech. All rights reserved.
  *
- * Builds and sends error-alert emails. All dynamic content is HTML-escaped
- * here (error messages can contain attacker-influenced text) and passed to
- * the template as a single pre-rendered, raw block — the template itself
- * never interpolates raw error fields.
+ * Sends the error alert email. The HTML body (the per-error cards) is rendered
+ * by Block\Email\Summary via the {{block}} directive in the template, so it is
+ * emitted as trusted, un-escaped markup. This class only computes the subject
+ * and passes scalar template vars — notably the selected group ids as a CSV.
+ *
+ * Rendered in the FRONTEND area with a real store view so the shared
+ * design/email header & footer templates resolve (they cannot in adminhtml).
  */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Model;
 
-use Magento\Backend\Model\UrlInterface as BackendUrl;
 use Magento\Framework\App\Area;
-use Magento\Framework\Escaper;
+use Magento\Framework\DataObject;
 use Magento\Framework\Mail\Template\TransportBuilder;
+use Magento\Store\Model\App\Emulation;
 use Magento\Store\Model\Store;
 use Magento\Store\Model\StoreManagerInterface;
 use Panth\ErrorMonitor\Helper\Config;
@@ -27,67 +30,60 @@ class EmailNotifier
     public function __construct(
         private readonly TransportBuilder $transportBuilder,
         private readonly StoreManagerInterface $storeManager,
-        private readonly BackendUrl $backendUrl,
-        private readonly Escaper $escaper,
+        private readonly Emulation $emulation,
         private readonly Config $config,
         private readonly LoggerInterface $logger
     ) {
     }
 
     /**
-     * Send a single digest email covering every supplied group.
+     * Send one email covering the supplied error groups.
      *
-     * @param array<int, \Magento\Framework\DataObject> $groups
+     * @param DataObject[] $groups
      */
-    public function sendDigest(array $groups): bool
-    {
-        if ($groups === []) {
-            return false;
-        }
-        $count = count($groups);
-        $subject = sprintf('[%s] %d error%s need attention', $this->siteName(), $count, $count === 1 ? '' : 's');
-        $body = '';
-        foreach ($groups as $group) {
-            $body .= $this->renderGroup($group);
-        }
-        return $this->dispatch($subject, $body, $count);
-    }
-
-    /**
-     * Send one email about a single group.
-     */
-    public function sendSingle(\Magento\Framework\DataObject $group): bool
-    {
-        $subject = sprintf(
-            '[%s] %s: %s',
-            $this->siteName(),
-            ucfirst((string)$group->getData('severity')),
-            $this->shorten((string)$group->getData('message'), 80)
-        );
-        return $this->dispatch($subject, $this->renderGroup($group), 1);
-    }
-
-    private function dispatch(string $subject, string $contentHtml, int $count): bool
+    public function send(array $groups): bool
     {
         $recipients = $this->config->getEmailRecipients();
-        if ($recipients === []) {
+        if ($groups === [] || $recipients === []) {
             return false;
         }
+
+        $ids = [];
+        foreach ($groups as $group) {
+            $id = (int)$group->getData('group_id');
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+        if ($ids === []) {
+            return false;
+        }
+
+        $count = count($ids);
+        $subject = sprintf(
+            '[%s] Error Monitor: %d error group%s',
+            $this->siteName(),
+            $count,
+            $count === 1 ? '' : 's'
+        );
+
+        $storeId = $this->resolveStoreId();
+        // Emulate the frontend store so getTransport() / sendMessage() work
+        // identically from CLI, cron and web — a console command otherwise has
+        // no area context and the transport fails to resolve.
+        $this->emulation->startEnvironmentEmulation($storeId, Area::AREA_FRONTEND, true);
         try {
             $this->transportBuilder
                 ->setTemplateIdentifier(self::TEMPLATE_ID)
                 ->setTemplateOptions([
-                    // Frontend area + a real store view so the shared
-                    // design/email header & footer templates resolve. (In the
-                    // adminhtml area those config-path includes can't be found.)
                     'area' => Area::AREA_FRONTEND,
-                    'store' => $this->resolveStoreId(),
+                    'store' => $storeId,
                 ])
                 ->setTemplateVars([
-                    'subject'      => $subject,
-                    'site_name'    => $this->siteName(),
-                    'error_count'  => $count,
-                    'content_html' => $contentHtml,
+                    'subject'     => $subject,
+                    'site_name'   => $this->siteName(),
+                    'error_count' => $count,
+                    'group_ids'   => implode(',', $ids),
                 ])
                 ->setFromByScope($this->config->getEmailSender());
 
@@ -100,41 +96,9 @@ class EmailNotifier
         } catch (\Throwable $e) {
             $this->logger->warning('[PanthErrorMonitor] email send failed: ' . $e->getMessage());
             return false;
+        } finally {
+            $this->emulation->stopEnvironmentEmulation();
         }
-    }
-
-    /**
-     * Render one escaped HTML card for a group.
-     */
-    private function renderGroup(\Magento\Framework\DataObject $group): string
-    {
-        $esc = fn ($v) => $this->escaper->escapeHtml((string)$v);
-        $severity = strtolower((string)$group->getData('severity'));
-        $color = match ($severity) {
-            'emergency', 'alert', 'critical' => '#b91c1c',
-            'error' => '#c2410c',
-            'warning' => '#b45309',
-            default => '#475569',
-        };
-        $viewUrl = $this->backendUrl->getUrl(
-            'panth_errormonitor/error/view',
-            ['group_id' => (int)$group->getData('group_id')]
-        );
-        $fileLine = trim((string)$group->getData('file') . ((int)$group->getData('line') ? ':' . (int)$group->getData('line') : ''));
-
-        return '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 16px;border:1px solid #e2e8f0;border-radius:8px;">'
-            . '<tr><td style="padding:14px 18px;font-family:Arial,Helvetica,sans-serif;">'
-            . '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:' . $color . ';color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">'
-            . $esc(strtoupper($severity)) . '</span> '
-            . '<span style="color:#64748b;font-size:12px;">' . $esc(strtoupper((string)$group->getData('source'))) . '</span>'
-            . '<p style="margin:10px 0 4px;font-size:15px;color:#0f172a;font-weight:bold;">' . $esc($group->getData('error_type')) . '</p>'
-            . '<p style="margin:0 0 8px;font-size:14px;color:#334155;line-height:1.5;">' . $esc($this->shorten((string)$group->getData('message'), 400)) . '</p>'
-            . ($fileLine !== '' ? '<p style="margin:0 0 4px;font-size:12px;color:#64748b;font-family:monospace;">' . $esc($fileLine) . '</p>' : '')
-            . '<p style="margin:0 0 10px;font-size:12px;color:#64748b;">'
-            . 'Occurrences: <strong>' . (int)$group->getData('occurrence_count') . '</strong>'
-            . ' &nbsp;|&nbsp; Last seen: ' . $esc((string)$group->getData('last_seen_at')) . ' UTC</p>'
-            . '<a href="' . $esc($viewUrl) . '" style="display:inline-block;padding:8px 16px;background:#0f172a;color:#fff;text-decoration:none;border-radius:6px;font-size:13px;">View details</a>'
-            . '</td></tr></table>';
     }
 
     /**
@@ -159,14 +123,9 @@ class EmailNotifier
     private function siteName(): string
     {
         try {
-            return (string)$this->storeManager->getDefaultStoreView()?->getName() ?: 'Magento';
+            return (string)($this->storeManager->getDefaultStoreView()?->getName() ?: 'Magento');
         } catch (\Throwable $e) {
             return 'Magento';
         }
-    }
-
-    private function shorten(string $value, int $max): string
-    {
-        return mb_strlen($value, 'UTF-8') > $max ? mb_substr($value, 0, $max, 'UTF-8') . '…' : $value;
     }
 }

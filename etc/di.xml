@@ -55,6 +55,7 @@
         <arguments>
             <argument name="commands" xsi:type="array">
                 <item name="panth_errormonitor_cleanup" xsi:type="object">Panth\ErrorMonitor\Console\Command\CleanupCommand</item>
+                <item name="panth_errormonitor_send_summary" xsi:type="object">Panth\ErrorMonitor\Console\Command\SendSummaryCommand</item>
             </argument>
         </arguments>
     </type>

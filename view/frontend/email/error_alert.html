@@ -1,9 +1,11 @@
 <!--
 /**
  * Copyright © Panth Infotech. All rights reserved.
- * Error Monitor alert / digest email.
- * content_html is built and HTML-escaped in PHP (EmailNotifier) — the
- * dynamic error fields are escaped there, this template only frames them.
+ * Error Monitor alert / daily summary email.
+ *
+ * The error cards are rendered by the {{block}} directive below (trusted,
+ * un-escaped HTML). Scalar vars (subject/site_name/error_count) are plain
+ * text and safe through {{var}}.
  */
 -->
 <!--@subject {{var subject}} @-->
@@ -11,7 +13,7 @@
 {"var subject":"Email Subject",
 "var site_name":"Site Name",
 "var error_count":"Error Count",
-"var content_html":"Rendered Error Cards (HTML)"}
+"var group_ids":"Error Group IDs (CSV)"}
 @-->
 {{template config_path="design/email/header_template"}}
 
@@ -19,20 +21,20 @@
     <tr>
         <td style="background:#0f172a;padding:28px 30px;">
             <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0;font-family:Arial,Helvetica,sans-serif;">
-                Error Monitor Alert
+                Error Monitor Summary
             </h1>
             <p style="color:rgba(255,255,255,.85);font-size:14px;margin:6px 0 0;font-family:Arial,Helvetica,sans-serif;">
-                {{var error_count}} error group(s) on {{var site_name}} need your attention
+                {{var error_count}} error group(s) on {{var site_name}} in the last 24 hours
             </p>
         </td>
     </tr>
     <tr>
         <td style="background:#f8fafc;padding:24px 30px;">
-            {{var content_html}}
+            {{block class="Panth\ErrorMonitor\Block\Email\Summary" area="frontend" template="Panth_ErrorMonitor::email/summary.phtml" group_ids=$group_ids}}
             <p style="margin:18px 0 0;font-size:12px;color:#94a3b8;font-family:Arial,Helvetica,sans-serif;line-height:1.6;">
-                You are receiving this because email alerts are enabled in
+                You are receiving this summary because email alerts are enabled in
                 Stores &rarr; Configuration &rarr; Panth Infotech &rarr; Error Monitor.
-                Each error group is emailed at most once per day.
+                Each error group is reported at most once per day.
             </p>
         </td>
     </tr>

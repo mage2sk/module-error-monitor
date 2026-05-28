@@ -153,7 +153,11 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
         }
         $hosts = [];
         foreach ($this->storeManager->getStores() as $store) {
-            foreach ([$store->getBaseUrl(), $store->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_LINK, true)] as $url) {
+            $urls = [
+                $store->getBaseUrl(),
+                $store->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_LINK, true),
+            ];
+            foreach ($urls as $url) {
                 $host = $this->hostFromUrl((string)$url);
                 if ($host !== null) {
                     $hosts[$host] = true;

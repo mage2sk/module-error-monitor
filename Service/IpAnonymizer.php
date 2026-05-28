@@ -47,13 +47,15 @@ class IpAnonymizer
             $parts[3] = '0';
             return implode('.', $parts);
         }
-        // IPv6 — keep the first 48 bits (3 hextets), zero the rest.
-        $packed = @inet_pton($ip);
+        // IPv6 — keep the first 48 bits (3 hextets), zero the rest. The value
+        // is already validated as an IP by process() before mask() is called,
+        // so inet_pton/inet_ntop will not emit warnings.
+        $packed = inet_pton($ip);
         if ($packed === false) {
             return $ip;
         }
         $masked = substr($packed, 0, 6) . str_repeat("\0", strlen($packed) - 6);
-        $result = @inet_ntop($masked);
+        $result = inet_ntop($masked);
         return $result !== false ? $result : $ip;
     }
 }

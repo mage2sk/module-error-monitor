@@ -96,8 +96,15 @@
                        showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Delivery Mode</label>
                     <source_model>Panth\ErrorMonitor\Model\Config\Source\EmailMode</source_model>
-                    <comment>Digest: one email per cron run listing all new/changed errors (recommended). Individual: one email per error group.</comment>
+                    <comment>Daily summary: one email per day at the hour below (recommended — never floods). Immediate digest: a digest as new errors arrive, each group at most once per day.</comment>
                     <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="send_hour" translate="label comment" type="text" sortOrder="25"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Daily Summary Hour (0-23, UTC)</label>
+                    <validate>validate-digits validate-digits-range digits-range-0-23</validate>
+                    <comment>Hour of day the once-per-day summary is sent, e.g. 23 = end of day. Only used in Daily summary mode.</comment>
+                    <depends><field id="enabled">1</field><field id="mode">daily_summary</field></depends>
                 </field>
                 <field id="recipients" translate="label comment" type="textarea" sortOrder="30"
                        showInDefault="1" showInWebsite="1" showInStore="1">
@@ -121,9 +128,9 @@
                 </field>
                 <field id="max_per_run" translate="label comment" type="text" sortOrder="60"
                        showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Max Error Groups per Run</label>
+                    <label>Max Error Groups per Email</label>
                     <validate>validate-digits</validate>
-                    <comment>Hard cap on how many error groups a single cron run will email about. Prevents inbox flooding during incidents.</comment>
+                    <comment>Hard cap on how many error groups a single email lists. Prevents huge emails during incidents.</comment>
                     <depends><field id="enabled">1</field></depends>
                 </field>
             </group>

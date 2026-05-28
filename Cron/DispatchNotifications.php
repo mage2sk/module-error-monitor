@@ -2,22 +2,25 @@
 /**
  * Copyright © Panth Infotech. All rights reserved.
  *
- * Decouples capture from notification. Errors are written instantly by the
- * handler/beacon; THIS cron is the only thing that ever sends mail. It selects
- * new (or recurred) error groups that are due an alert and either bundles them
- * into one digest or sends them individually — then stamps each group with
- * today's date so it can't be emailed again until tomorrow.
+ * The ONLY thing that ever sends mail. Errors are captured instantly; this
+ * cron decides when to email and never floods the inbox:
  *
- * Three layers stop the inbox flooding:
- *   1. Per-group daily dedupe (last_emailed_date).
- *   2. Severity threshold (email/min_severity).
- *   3. Hard per-run cap (email/max_per_run).
+ *   - daily_summary (default): at most ONE email per day. Once the configured
+ *     send-hour passes, it sends a single summary of the error groups seen in
+ *     the last 24h, then sets a per-day Flag so nothing else goes out until
+ *     tomorrow. Repeated errors are already collapsed into one group, so each
+ *     distinct error appears once.
+ *   - immediate_digest: a digest of new/recurred groups not yet emailed today,
+ *     each group capped to one email per day via last_emailed_date.
+ *
+ * The cron itself runs hourly; the logic above gates actual delivery.
  */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Cron;
 
 use Magento\Framework\DB\Sql\Expression;
+use Magento\Framework\FlagManager;
 use Panth\ErrorMonitor\Helper\Config;
 use Panth\ErrorMonitor\Model\Config\Source\EmailMode;
 use Panth\ErrorMonitor\Model\Config\Source\Severity;
@@ -29,11 +32,14 @@ use Psr\Log\LoggerInterface;
 
 class DispatchNotifications
 {
+    private const SUMMARY_FLAG_PREFIX = 'panth_errormonitor_summary_';
+
     public function __construct(
         private readonly Config $config,
         private readonly CollectionFactory $collectionFactory,
         private readonly ErrorGroupResource $groupResource,
         private readonly EmailNotifier $notifier,
+        private readonly FlagManager $flagManager,
         private readonly LoggerInterface $logger
     ) {
     }
@@ -41,41 +47,14 @@ class DispatchNotifications
     public function execute(): void
     {
         try {
-            if (!$this->config->isEmailEnabled()) {
-                return;
-            }
-            if ($this->config->getEmailRecipients() === []) {
+            if (!$this->config->isEmailEnabled() || $this->config->getEmailRecipients() === []) {
                 return;
             }
 
-            $today = gmdate('Y-m-d');
-            $collection = $this->collectionFactory->create();
-            $collection->addFieldToFilter('status', ErrorGroup::STATUS_NEW)
-                ->addFieldToFilter('severity', ['in' => $this->severitiesAtOrAbove($this->config->getEmailMinSeverity())])
-                ->addFieldToFilter(
-                    'last_emailed_date',
-                    [['null' => true], ['lt' => $today]]
-                )
-                ->setOrder('last_seen_at', 'DESC')
-                ->setPageSize($this->config->getEmailMaxPerRun())
-                ->setCurPage(1);
-
-            $groups = $collection->getItems();
-            if ($groups === []) {
-                return;
-            }
-
-            $sent = false;
-            if ($this->config->getEmailMode() === EmailMode::MODE_INDIVIDUAL) {
-                foreach ($groups as $group) {
-                    $sent = $this->notifier->sendSingle($group) || $sent;
-                }
+            if ($this->config->getEmailMode() === EmailMode::MODE_IMMEDIATE) {
+                $this->runImmediateDigest();
             } else {
-                $sent = $this->notifier->sendDigest(array_values($groups));
-            }
-
-            if ($sent) {
-                $this->markEmailed(array_map(static fn ($g) => (int)$g->getData('group_id'), $groups), $today);
+                $this->runDailySummary();
             }
         } catch (\Throwable $e) {
             $this->logger->warning('[PanthErrorMonitor] dispatch failed: ' . $e->getMessage());
@@ -83,11 +62,82 @@ class DispatchNotifications
     }
 
     /**
+     * One email per day, after the configured send-hour, guarded by a per-day Flag.
+     */
+    private function runDailySummary(): void
+    {
+        if ((int)gmdate('G') < $this->config->getEmailSendHour()) {
+            return; // too early in the day
+        }
+        $today = gmdate('Y-m-d');
+        $flagCode = self::SUMMARY_FLAG_PREFIX . $today;
+        if ($this->flagManager->getFlagData($flagCode)) {
+            return; // already sent today
+        }
+
+        // Error groups that actually occurred in the last 24h (so old, dormant
+        // errors are not re-reported), excluding ignored ones.
+        $since = gmdate('Y-m-d H:i:s', time() - 86400);
+        $collection = $this->collectionFactory->create();
+        $collection->addFieldToFilter('status', ErrorGroup::STATUS_NEW)
+            ->addFieldToFilter('severity', ['in' => $this->severitiesAtOrAbove($this->config->getEmailMinSeverity())])
+            ->addFieldToFilter('last_seen_at', ['gteq' => $since])
+            ->setOrder('severity', 'DESC')
+            ->setOrder('occurrence_count', 'DESC')
+            ->setPageSize($this->config->getEmailMaxPerRun())
+            ->setCurPage(1);
+
+        $groups = array_values($collection->getItems());
+        if ($groups === []) {
+            // Nothing happened today — mark sent so we don't re-query hourly,
+            // and skip sending an empty "all healthy" email.
+            $this->flagManager->saveFlag($flagCode, 1);
+            return;
+        }
+
+        if ($this->notifier->send($groups)) {
+            $this->flagManager->saveFlag($flagCode, 1);
+            $this->markEmailed($this->ids($groups), $today);
+        }
+    }
+
+    /**
+     * Digest of new/recurred groups not yet emailed today.
+     */
+    private function runImmediateDigest(): void
+    {
+        $today = gmdate('Y-m-d');
+        $collection = $this->collectionFactory->create();
+        $collection->addFieldToFilter('status', ErrorGroup::STATUS_NEW)
+            ->addFieldToFilter('severity', ['in' => $this->severitiesAtOrAbove($this->config->getEmailMinSeverity())])
+            ->addFieldToFilter('last_emailed_date', [['null' => true], ['lt' => $today]])
+            ->setOrder('last_seen_at', 'DESC')
+            ->setPageSize($this->config->getEmailMaxPerRun())
+            ->setCurPage(1);
+
+        $groups = array_values($collection->getItems());
+        if ($groups === []) {
+            return;
+        }
+        if ($this->notifier->send($groups)) {
+            $this->markEmailed($this->ids($groups), $today);
+        }
+    }
+
+    /**
+     * @param DataObject[]|\Magento\Framework\DataObject[] $groups
+     * @return int[]
+     */
+    private function ids(array $groups): array
+    {
+        return array_values(array_filter(array_map(static fn ($g) => (int)$g->getData('group_id'), $groups)));
+    }
+
+    /**
      * @param int[] $groupIds
      */
     private function markEmailed(array $groupIds, string $today): void
     {
-        $groupIds = array_values(array_filter($groupIds));
         if ($groupIds === []) {
             return;
         }

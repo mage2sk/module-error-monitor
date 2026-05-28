@@ -104,7 +104,19 @@ class Config extends AbstractConfig
 
     public function getEmailMode($storeId = null): string
     {
-        return (string)($this->getConfigValue('email', 'mode', $storeId) ?: 'digest');
+        return (string)($this->getConfigValue('email', 'mode', $storeId) ?: 'daily_summary');
+    }
+
+    /**
+     * Hour of day (0-23, UTC) at which the daily summary is sent.
+     */
+    public function getEmailSendHour($storeId = null): int
+    {
+        $hour = (int)$this->getConfigValue('email', 'send_hour', $storeId);
+        if ($hour < 0) {
+            return 0;
+        }
+        return $hour > 23 ? 23 : $hour;
     }
 
     /**

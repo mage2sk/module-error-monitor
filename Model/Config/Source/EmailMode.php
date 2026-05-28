@@ -10,8 +10,11 @@ use Magento\Framework\Data\OptionSourceInterface;
 
 class EmailMode implements OptionSourceInterface
 {
-    public const MODE_DIGEST = 'digest';
-    public const MODE_INDIVIDUAL = 'individual';
+    /** One summary email per day at a fixed hour (recommended — no inbox flooding). */
+    public const MODE_DAILY = 'daily_summary';
+
+    /** A digest sent as new errors arrive (each group at most once per day). */
+    public const MODE_IMMEDIATE = 'immediate_digest';
 
     /**
      * @return array<int, array{value: string, label: \Magento\Framework\Phrase}>
@@ -19,8 +22,8 @@ class EmailMode implements OptionSourceInterface
     public function toOptionArray(): array
     {
         return [
-            ['value' => self::MODE_DIGEST, 'label' => __('Digest (one email per run)')],
-            ['value' => self::MODE_INDIVIDUAL, 'label' => __('Individual (one email per error)')],
+            ['value' => self::MODE_DAILY, 'label' => __('Daily summary — one email per day (recommended)')],
+            ['value' => self::MODE_IMMEDIATE, 'label' => __('Immediate digest — as new errors arrive')],
         ];
     }
 }

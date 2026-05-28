@@ -121,8 +121,12 @@ class DbHandler extends AbstractProcessingHandler
     /**
      * @param array<string, mixed> $context
      */
-    private function buildPayload(string $severity, string $message, array $context, string $channel): ErrorPayload
-    {
+    private function buildPayload(
+        string $severity,
+        string $message,
+        array $context,
+        string $channel
+    ): ErrorPayload {
         $type = '';
         $file = null;
         $line = null;

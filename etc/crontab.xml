@@ -7,10 +7,11 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
     <group id="default">
-        <!-- Build + send the throttled digest of new/changed errors. -->
+        <!-- Hourly check; actual delivery is gated (daily summary at send-hour,
+             or immediate digest each run). Never sends more than the mode allows. -->
         <job name="panth_errormonitor_dispatch_notifications"
              instance="Panth\ErrorMonitor\Cron\DispatchNotifications" method="execute">
-            <schedule>*/15 * * * *</schedule>
+            <schedule>5 * * * *</schedule>
         </job>
         <!-- Prune old events and resolved groups per retention config. -->
         <job name="panth_errormonitor_cleanup"

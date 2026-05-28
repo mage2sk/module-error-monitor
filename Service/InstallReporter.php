@@ -168,7 +168,7 @@ class InstallReporter
             if (!is_readable($composerPath)) {
                 return '';
             }
-            $raw = (string)@file_get_contents($composerPath);
+            $raw = (string)file_get_contents($composerPath);
             if ($raw === '') {
                 return '';
             }

@@ -3,6 +3,32 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-05-28
+
+### Fixed
+- **Email HTML now renders correctly.** Error cards were passed through
+  `{{var}}` and double-escaped by the email filter, showing as literal markup
+  in the inbox. They are now rendered by a `{{block}}` directive
+  (Block\Email\Summary + view/frontend/templates/email/summary.phtml) as
+  trusted HTML, with every dynamic field still escaped.
+
+### Changed
+- **Default email cadence is now a once-per-day summary** instead of frequent
+  digests. A single email is sent after a configurable send-hour (default 23:00
+  UTC), covering the error groups seen in the last 24 hours, guarded by a
+  per-day flag so it can never send twice in one day. "Immediate digest" remains
+  available as a mode. Dispatch cron now runs hourly (gated), not every 15 min.
+- Added **Daily Summary Hour** config field; relabelled the per-email cap.
+
+### Added
+- `bin/magento panth:errormonitor:send-summary` — send the summary on demand
+  (bypasses the daily gate) to verify email configuration.
+- Unit tests for Fingerprinter, IpAnonymizer, and Severity.
+
+### Quality
+- Passes `phpcs --standard=Magento2` with zero errors. Strict constructor DI
+  throughout (no ObjectManager).
+
 ## [1.0.1] - 2026-05-27
 
 ### Fixed
