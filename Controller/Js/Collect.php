@@ -35,6 +35,7 @@ use Magento\Framework\Controller\Result\RawFactory;
 use Magento\Store\Model\StoreManagerInterface;
 use Panth\ErrorMonitor\Helper\Config;
 use Panth\ErrorMonitor\Model\ErrorGroup;
+use Panth\ErrorMonitor\Service\DeploymentGuard;
 use Panth\ErrorMonitor\Service\ErrorPayload;
 use Panth\ErrorMonitor\Service\ErrorRecorder;
 use Panth\ErrorMonitor\Service\IpAnonymizer;
@@ -57,7 +58,8 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
         private readonly RateLimiter $rateLimiter,
         private readonly ErrorRecorder $recorder,
         private readonly IpAnonymizer $ipAnonymizer,
-        private readonly StoreManagerInterface $storeManager
+        private readonly StoreManagerInterface $storeManager,
+        private readonly DeploymentGuard $deploymentGuard
     ) {
     }
 
@@ -72,6 +74,11 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
             $storeId = (int)$this->storeManager->getStore()->getId();
 
             if (!$this->config->isJsCaptureEnabled($storeId)) {
+                return $result;
+            }
+            // Pause-during-deploy: bot/visitor beacons while the site is being
+            // deployed are noise, not real bugs.
+            if ($this->deploymentGuard->isCaptureSuspended()) {
                 return $result;
             }
             if (!$this->isSameOrigin()) {

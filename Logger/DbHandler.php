@@ -35,6 +35,7 @@ use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Logger;
 use Panth\ErrorMonitor\Model\Config\Source\Severity;
 use Panth\ErrorMonitor\Model\ErrorGroup;
+use Panth\ErrorMonitor\Service\DeploymentGuard;
 use Panth\ErrorMonitor\Service\ErrorRecorder;
 use Panth\ErrorMonitor\Service\ErrorPayload;
 use Panth\ErrorMonitor\Service\IpAnonymizer;
@@ -50,6 +51,7 @@ class DbHandler extends AbstractProcessingHandler
         private readonly ErrorRecorder $recorder,
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly IpAnonymizer $ipAnonymizer,
+        private readonly DeploymentGuard $deploymentGuard,
         $level = Logger::NOTICE,
         bool $bubble = true
     ) {
@@ -64,6 +66,13 @@ class DbHandler extends AbstractProcessingHandler
         try {
             if (!$this->scopeConfig->isSetFlag('panth_errormonitor/general/enabled')
                 || !$this->scopeConfig->isSetFlag('panth_errormonitor/php_capture/enabled')) {
+                return;
+            }
+
+            // Skip deployment-noise: visitors / bots hitting the site mid-deploy
+            // throw exceptions that get logged here; capture is paused while
+            // MaintenanceMode is on or an explicit pause flag is active.
+            if ($this->deploymentGuard->isCaptureSuspended()) {
                 return;
             }
 

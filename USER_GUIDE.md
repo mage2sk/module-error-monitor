@@ -83,10 +83,34 @@ slow a request or flood mail in real time.
 | `panth_errormonitor_send_heartbeat` | daily 04:43 | suite heartbeat (no-op if Panth_Core present) |
 
 ```bash
-bin/magento panth:errormonitor:cleanup    # prune on demand
+bin/magento panth:errormonitor:cleanup       # prune on demand
+bin/magento panth:errormonitor:send-summary  # send the daily email now (ignores send-hour gate)
+bin/magento panth:errormonitor:pause -m 60   # suspend capture for 60 minutes (deploys)
+bin/magento panth:errormonitor:resume        # clear an explicit pause
 ```
 
-## 5. Security model (JS endpoint)
+## 5. Deploys — silence the noise from visitors hitting the site mid-deploy
+
+Visitors and bots hitting URLs while the site is being deployed throw
+exceptions (DI rebuilding, statics regenerating, indexers running) that
+would otherwise pollute your error log. The module pauses capture
+automatically using two complementary signals:
+
+- **`MaintenanceMode`** is the canonical signal. If your deploy already does
+  `bin/magento maintenance:enable` before and `maintenance:disable` after,
+  **no extra step is needed** — capture (PHP handler and JS beacon) is
+  paused for the full window and resumes the instant maintenance is lifted.
+- **Explicit pause** for deploys without maintenance mode (or as belt &
+  braces):
+  ```bash
+  bin/magento panth:errormonitor:pause --minutes=60    # auto-expires
+  # ...your deploy commands...
+  bin/magento panth:errormonitor:resume
+  ```
+  The pause auto-expires after the requested window, so a forgotten
+  pause never silences the module forever.
+
+## 6. Security model (JS endpoint)
 
 The public beacon (`/panth_errormonitor/js/collect`) is deliberately
 CSRF-exempt (FPC pages have no fresh form key). It is hardened with layered,
@@ -105,7 +129,7 @@ independent defences:
 All stored values are HTML-escaped on output in the admin grid, detail view,
 and email.
 
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 - **No PHP errors captured** — confirm general + PHP capture are enabled and the
   severity threshold isn't above what you're logging; trigger a test error.

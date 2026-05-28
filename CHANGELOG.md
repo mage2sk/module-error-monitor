@@ -3,6 +3,21 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-05-28
+
+### Added
+- **Deployment-time capture pause.** Visitors / bots hitting URLs while a
+  site is being deployed throw exceptions that previously got logged as
+  "real" errors. Capture is now automatically suspended via two complementary
+  signals:
+    - `MaintenanceMode` — when an admin runs `bin/magento maintenance:enable`
+      for a deploy, capture pauses for its duration. No extra work needed.
+    - `bin/magento panth:errormonitor:pause [--minutes=N]` /
+      `bin/magento panth:errormonitor:resume` — explicit kill-switch with
+      auto-expiry, for deploys that don't use maintenance mode.
+  Implemented in `Service\DeploymentGuard`; consulted by both the PHP log
+  handler and the JS beacon endpoint.
+
 ## [1.1.0] - 2026-05-28
 
 ### Fixed
