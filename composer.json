@@ -2,7 +2,7 @@
     "name": "mage2kishan/module-error-monitor",
     "description": "Panth Error Monitor — smart, secure error management for Magento 2. Captures PHP exceptions and storefront JavaScript console errors into deduplicated, grouped database records, and sends throttled digest email alerts so your inbox is never flooded. Includes an admin review grid, severity-based filtering, IP anonymisation, rate limiting, and automatic data retention.",
     "type": "magento2-module",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "license": "proprietary",
     "keywords": [
         "magento2",

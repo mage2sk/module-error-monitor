@@ -62,6 +62,38 @@ $group = $block->getGroup();
 
     <div class="admin__page-section">
         <div class="admin__page-section-title">
+            <span class="title"><?= $escaper->escapeHtml(__('Pages where this error occurred')) ?></span>
+        </div>
+        <?php $urls = $block->getDistinctUrls(); ?>
+        <?php if (!$urls): ?>
+            <p><?= $escaper->escapeHtml(__('No URLs recorded for this error (events may have aged out, or none had a URL).')) ?></p>
+        <?php else: ?>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:90px;"><?= $escaper->escapeHtml(__('Occurrences')) ?></th>
+                        <th><?= $escaper->escapeHtml(__('URL')) ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($urls as $row): ?>
+                        <tr>
+                            <td><strong><?= (int)$row['occurrences'] ?></strong></td>
+                            <td style="font-family:'Courier New',monospace;font-size:12px;word-break:break-all;">
+                                <?= $escaper->escapeHtml($row['url']) ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <p style="margin:8px 0 0;font-size:12px;color:#666;">
+                <?= $escaper->escapeHtml(__('Showing up to %1 distinct URLs, most frequent first.', 50)) ?>
+            </p>
+        <?php endif; ?>
+    </div>
+
+    <div class="admin__page-section">
+        <div class="admin__page-section-title">
             <span class="title"><?= $escaper->escapeHtml(__('Recent Occurrences (latest %1)', 50)) ?></span>
         </div>
         <?php $events = $block->getRecentEvents(); ?>

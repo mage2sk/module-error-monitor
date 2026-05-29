@@ -3,6 +3,69 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-05-28
+
+### Changed
+- **Much tighter error grouping.** The Fingerprinter now ships 30+ ordered
+  normalisation rules covering JSON payloads, URLs, Unix/Windows paths,
+  filenames, UUIDs, SHA digests, GraphQL Report IDs, generic 32+ hex tokens,
+  PHP session IDs, IPv4/IPv6, quoted values, line/position/offset markers,
+  stack-frame counters, version strings, and big numeric IDs — ordered
+  specific-first so a general rule never eats tokens a more specific rule
+  should have collapsed. ReDoS-safe (bounded repetition + a 32 KiB input
+  guard).
+- **Type extraction from raw messages.** When a record is logged without a
+  Throwable in context, the handler previously stored the Monolog channel
+  ("main", "report") as the error type, defeating grouping for every such
+  record. The new `Fingerprinter::extractType()` mines the actual class /
+  family from the message itself via 10 ordered patterns (PHP exception
+  wrappers, JS native error classes, Elasticsearch `caused_by` types,
+  template-engine wrappers, generic `[Tag] LEVEL` log conventions, PHP
+  severity words) before falling back to the channel.
+
+### Added
+- **Auto-regroup on upgrade.** A one-shot `Setup/Patch/Data/RegroupErrorsV2`
+  re-fingerprints every existing `panth_error_group` row with the new rules
+  and merges duplicates in a single transaction. Triggered automatically by
+  `setup:upgrade` (Magento's patch system records the apply so it never runs
+  twice).
+- `bin/magento panth:errormonitor:regroup [--dry-run]` — run / preview the
+  same regroup on demand.
+
+### Fixed
+- **View Details button no longer redirects to the storefront homepage.** The
+  grid Actions column was injecting `Magento\Framework\UrlInterface`, which in
+  the `mui/index/render` data-provider context can resolve to the frontend URL
+  builder and omits the admin secret key. Switched to the explicit
+  `Magento\Backend\Model\UrlInterface` so every action link is a fully-formed
+  admin URL with `/key/<csrf>/`.
+- **Identifier-shaped quoted tokens (module / table / column / config-path /
+  cache-type names) are preserved in the fingerprint** instead of being
+  collapsed to `<v>` — different errors with different identifiers no longer
+  false-group into one bucket.
+- **Elasticsearch `caused_by.type` / `root_cause.type` survives normalisation**
+  via an out-of-band suffix marker, so different ES failure types under the
+  same outer exception no longer share a fingerprint.
+- **IPv6 addresses with `::` zero-compression collapse correctly** (most
+  real-world IPv6 forms previously slipped through).
+- **IPv4 inside `://` URLs collapses correctly** (previously `tcp://1.2.3.4`
+  matched only partially because `/` was in the negative lookbehind).
+- **Magento static-asset cache-buster (`/static/version<ts>/...`) is stripped**
+  in `normalizeFile()` so the same JS error groups across every deploy
+  instead of producing a brand-new bucket each time static content is
+  redeployed.
+
+### Added
+- **"Pages where this error occurred" section** on the error detail page —
+  lists every distinct URL where the error was recorded, with occurrence
+  count per URL, ordered most-frequent first (capped at the top 50).
+
+### Notes
+- Empirically (against a 279-group production export, post-fix):
+  ~30-35% group reduction with **zero false-positive collisions** in 10
+  hand-crafted adversarial pairs (the v2 trades aggressive over-collapse for
+  a smaller, more honest reduction that never merges unrelated incidents).
+
 ## [1.3.0] - 2026-05-28
 
 ### Added

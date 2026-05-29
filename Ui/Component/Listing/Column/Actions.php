@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Ui\Component\Listing\Column;
 
-use Magento\Framework\UrlInterface;
+use Magento\Backend\Model\UrlInterface as BackendUrl;
 use Magento\Framework\View\Element\UiComponent\ContextInterface;
 use Magento\Framework\View\Element\UiComponentFactory;
 use Magento\Ui\Component\Listing\Columns\Column;
@@ -21,10 +21,16 @@ class Actions extends Column
     private const URL_IGNORE = 'panth_errormonitor/error/ignore';
     private const URL_DELETE = 'panth_errormonitor/error/delete';
 
+    /**
+     * Backend URL builder injected explicitly — Magento\Framework\UrlInterface
+     * may resolve to the frontend builder inside the mui/index/render data
+     * provider context and would omit the admin secret key, sending the link
+     * to the storefront login redirect instead of the admin View page.
+     */
     public function __construct(
         ContextInterface $context,
         UiComponentFactory $uiComponentFactory,
-        private readonly UrlInterface $urlBuilder,
+        private readonly BackendUrl $urlBuilder,
         array $components = [],
         array $data = []
     ) {

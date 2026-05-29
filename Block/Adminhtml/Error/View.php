@@ -14,12 +14,14 @@ use Magento\Backend\Block\Template\Context;
 use Magento\Framework\DataObject;
 use Panth\ErrorMonitor\Model\ErrorGroup;
 use Panth\ErrorMonitor\Model\ErrorGroupFactory;
+use Panth\ErrorMonitor\Model\ResourceModel\ErrorEvent as ErrorEventResource;
 use Panth\ErrorMonitor\Model\ResourceModel\ErrorEvent\CollectionFactory as EventCollectionFactory;
 use Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup as ErrorGroupResource;
 
 class View extends Template
 {
     private const RECENT_EVENT_LIMIT = 50;
+    private const DISTINCT_URL_LIMIT = 50;
 
     private ?ErrorGroup $group = null;
 
@@ -28,6 +30,7 @@ class View extends Template
         private readonly ErrorGroupFactory $groupFactory,
         private readonly ErrorGroupResource $groupResource,
         private readonly EventCollectionFactory $eventCollectionFactory,
+        private readonly ErrorEventResource $eventResource,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -61,6 +64,37 @@ class View extends Template
             ->setPageSize(self::RECENT_EVENT_LIMIT)
             ->setCurPage(1);
         return $collection->getItems();
+    }
+
+    /**
+     * Every distinct URL where this error has been recorded, with the number
+     * of occurrences per URL, ordered by frequency descending. Capped to the
+     * top DISTINCT_URL_LIMIT so a pathological event count can't blow up the
+     * admin page render.
+     *
+     * @return array<int, array{url:string, occurrences:int}>
+     */
+    public function getDistinctUrls(): array
+    {
+        $group = $this->getGroup();
+        if (!$group->getId()) {
+            return [];
+        }
+        $conn = $this->eventResource->getConnection();
+        $table = $this->eventResource->getMainTable();
+        $select = $conn->select()
+            ->from($table, ['url' => 'url', 'occurrences' => new \Magento\Framework\DB\Sql\Expression('COUNT(*)')])
+            ->where('group_id = ?', (int)$group->getId())
+            ->where('url IS NOT NULL')
+            ->where("url <> ''")
+            ->group('url')
+            ->order('occurrences DESC')
+            ->limit(self::DISTINCT_URL_LIMIT);
+        $rows = $conn->fetchAll($select);
+        return array_map(static fn ($r) => [
+            'url' => (string)$r['url'],
+            'occurrences' => (int)$r['occurrences'],
+        ], $rows);
     }
 
     public function getBackUrl(): string

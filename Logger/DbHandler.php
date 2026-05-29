@@ -38,10 +38,18 @@ use Panth\ErrorMonitor\Model\ErrorGroup;
 use Panth\ErrorMonitor\Service\DeploymentGuard;
 use Panth\ErrorMonitor\Service\ErrorRecorder;
 use Panth\ErrorMonitor\Service\ErrorPayload;
+use Panth\ErrorMonitor\Service\Fingerprinter;
 use Panth\ErrorMonitor\Service\IpAnonymizer;
 
 class DbHandler extends AbstractProcessingHandler
 {
+    /**
+     * Channel names that are too generic to use as the error "type" — when the
+     * channel is one of these AND no exception is in context, we try to mine
+     * the real class out of the message via Fingerprinter::extractType.
+     */
+    private const GENERIC_CHANNELS = ['main', 'report', '', 'error', 'exception'];
+
     /**
      * @param int|string $level Defaulted with Logger::NOTICE (an int constant
      *                          present in both Monolog 2 and 3) — do NOT type
@@ -52,6 +60,7 @@ class DbHandler extends AbstractProcessingHandler
         private readonly ScopeConfigInterface $scopeConfig,
         private readonly IpAnonymizer $ipAnonymizer,
         private readonly DeploymentGuard $deploymentGuard,
+        private readonly Fingerprinter $fingerprinter,
         $level = Logger::NOTICE,
         bool $bubble = true
     ) {
@@ -155,7 +164,17 @@ class DbHandler extends AbstractProcessingHandler
                 $stack = trim(substr($message, $pos + strlen('Stack trace:')));
                 $message = trim(substr($message, 0, $pos));
             }
-            $type = $channel !== '' ? $channel : 'error';
+            // Try to mine the real exception class / error family out of the
+            // message. The Monolog channel ("main", "report", ...) is almost
+            // never the actual error type and produces useless grouping.
+            $extracted = $this->fingerprinter->extractType($message);
+            if ($extracted !== null) {
+                $type = $extracted;
+            } elseif (!in_array(strtolower($channel), self::GENERIC_CHANNELS, true)) {
+                $type = $channel;
+            } else {
+                $type = 'error';
+            }
         }
 
         unset($context['exception']);

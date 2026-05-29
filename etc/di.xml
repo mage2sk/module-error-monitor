@@ -32,6 +32,7 @@
             <argument name="recorder" xsi:type="object">Panth\ErrorMonitor\Service\ErrorRecorder\Proxy</argument>
             <argument name="ipAnonymizer" xsi:type="object">Panth\ErrorMonitor\Service\IpAnonymizer\Proxy</argument>
             <argument name="deploymentGuard" xsi:type="object">Panth\ErrorMonitor\Service\DeploymentGuard\Proxy</argument>
+            <argument name="fingerprinter" xsi:type="object">Panth\ErrorMonitor\Service\Fingerprinter\Proxy</argument>
         </arguments>
     </type>
 
@@ -59,6 +60,7 @@
                 <item name="panth_errormonitor_send_summary" xsi:type="object">Panth\ErrorMonitor\Console\Command\SendSummaryCommand</item>
                 <item name="panth_errormonitor_pause" xsi:type="object">Panth\ErrorMonitor\Console\Command\PauseCaptureCommand</item>
                 <item name="panth_errormonitor_resume" xsi:type="object">Panth\ErrorMonitor\Console\Command\ResumeCaptureCommand</item>
+                <item name="panth_errormonitor_regroup" xsi:type="object">Panth\ErrorMonitor\Console\Command\RegroupCommand</item>
             </argument>
         </arguments>
     </type>
