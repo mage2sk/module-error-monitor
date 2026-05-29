@@ -3,6 +3,15 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-05-28
+
+### Added
+- **CSV / Excel XML export from the admin error grid.** A standard Magento UI
+  `<exportButton>` is wired into the listing toolbar; admins can export all
+  matching rows (respecting current filters) to either format using the
+  built-in `mui/export/gridToCsv` / `gridToXml` endpoints. ACL-gated by the
+  existing `Panth_ErrorMonitor::view` resource — no additional permission needed.
+
 ## [1.2.0] - 2026-05-28
 
 ### Added

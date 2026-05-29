@@ -78,6 +78,7 @@
                 </settings>
             </action>
         </massaction>
+        <exportButton name="export_button"/>
         <paging name="listing_paging"/>
     </listingToolbar>
 
