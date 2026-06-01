@@ -25,6 +25,11 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Master switch. When off, no errors are captured and no emails are sent.</comment>
                 </field>
+                <field id="ignore_patterns" translate="label comment" type="textarea" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Ignore Errors Matching</label>
+                    <comment><![CDATA[One substring per line, matched case-insensitively. An error is dropped at capture time if the substring appears anywhere in its <b>message</b>, <b>file path</b>, <b>error class</b>, or <b>stack trace</b>. Use this to silence a whole noisy module (e.g. <code>Vendor_Module</code>, <code>vendor/somevendor/</code>, <code>Apptrian\Minify</code>) or a specific message family (e.g. <code>Deprecated Functionality:</code>, <code>Page URL:</code>).]]></comment>
+                </field>
             </group>
 
             <group id="php_capture" translate="label" type="text" sortOrder="20"
@@ -75,12 +80,6 @@
                     <comment>Larger payloads are rejected before parsing.</comment>
                     <depends><field id="enabled">1</field></depends>
                 </field>
-                <field id="ignore_patterns" translate="label comment" type="textarea" sortOrder="50"
-                       showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Ignore Messages Containing</label>
-                    <comment>One substring per line. Matching errors (PHP and JS) are dropped — useful for known browser noise.</comment>
-                    <depends><field id="enabled">1</field></depends>
-                </field>
             </group>
 
             <group id="email" translate="label" type="text" sortOrder="40"
@@ -92,19 +91,12 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Alerts are sent by cron, never synchronously. Each error group is emailed at most once per day.</comment>
                 </field>
-                <field id="mode" translate="label comment" type="select" sortOrder="20"
-                       showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Delivery Mode</label>
-                    <source_model>Panth\ErrorMonitor\Model\Config\Source\EmailMode</source_model>
-                    <comment>Daily summary: one email per day at the hour below (recommended — never floods). Immediate digest: a digest as new errors arrive, each group at most once per day.</comment>
-                    <depends><field id="enabled">1</field></depends>
-                </field>
                 <field id="send_hour" translate="label comment" type="text" sortOrder="25"
                        showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Daily Summary Hour (0-23, UTC)</label>
                     <validate>validate-digits validate-digits-range digits-range-0-23</validate>
-                    <comment>Hour of day the once-per-day summary is sent, e.g. 23 = end of day. Only used in Daily summary mode.</comment>
-                    <depends><field id="enabled">1</field><field id="mode">daily_summary</field></depends>
+                    <comment>Hour of day the once-per-day summary is sent, e.g. 23 = end of day. The summary is sent at most ONCE per day, regardless of how many errors fire — there is no "every N hours" mode.</comment>
+                    <depends><field id="enabled">1</field></depends>
                 </field>
                 <field id="recipients" translate="label comment" type="textarea" sortOrder="30"
                        showInDefault="1" showInWebsite="1" showInStore="1">

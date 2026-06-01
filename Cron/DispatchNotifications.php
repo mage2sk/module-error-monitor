@@ -3,17 +3,13 @@
  * Copyright © Panth Infotech. All rights reserved.
  *
  * The ONLY thing that ever sends mail. Errors are captured instantly; this
- * cron decides when to email and never floods the inbox:
+ * cron decides when to email and never floods the inbox.
  *
- *   - daily_summary (default): at most ONE email per day. Once the configured
- *     send-hour passes, it sends a single summary of the error groups seen in
- *     the last 24h, then sets a per-day Flag so nothing else goes out until
- *     tomorrow. Repeated errors are already collapsed into one group, so each
- *     distinct error appears once.
- *   - immediate_digest: a digest of new/recurred groups not yet emailed today,
- *     each group capped to one email per day via last_emailed_date.
- *
- * The cron itself runs hourly; the logic above gates actual delivery.
+ * As of 1.5.0 the cadence is fixed: at most ONE email per day. The cron runs
+ * hourly so the admin can change send_hour without re-scheduling, but actual
+ * delivery is double-gated by send_hour AND a per-day Flag so a second send
+ * cannot happen on the same UTC day. Repeated errors collapse into one group
+ * via the fingerprint, so each distinct error appears once in the summary.
  */
 declare(strict_types=1);
 
@@ -22,7 +18,6 @@ namespace Panth\ErrorMonitor\Cron;
 use Magento\Framework\DB\Sql\Expression;
 use Magento\Framework\FlagManager;
 use Panth\ErrorMonitor\Helper\Config;
-use Panth\ErrorMonitor\Model\Config\Source\EmailMode;
 use Panth\ErrorMonitor\Model\Config\Source\Severity;
 use Panth\ErrorMonitor\Model\EmailNotifier;
 use Panth\ErrorMonitor\Model\ErrorGroup;
@@ -50,12 +45,7 @@ class DispatchNotifications
             if (!$this->config->isEmailEnabled() || $this->config->getEmailRecipients() === []) {
                 return;
             }
-
-            if ($this->config->getEmailMode() === EmailMode::MODE_IMMEDIATE) {
-                $this->runImmediateDigest();
-            } else {
-                $this->runDailySummary();
-            }
+            $this->runDailySummary();
         } catch (\Throwable $e) {
             $this->logger->warning('[PanthErrorMonitor] dispatch failed: ' . $e->getMessage());
         }
@@ -102,30 +92,7 @@ class DispatchNotifications
     }
 
     /**
-     * Digest of new/recurred groups not yet emailed today.
-     */
-    private function runImmediateDigest(): void
-    {
-        $today = gmdate('Y-m-d');
-        $collection = $this->collectionFactory->create();
-        $collection->addFieldToFilter('status', ErrorGroup::STATUS_NEW)
-            ->addFieldToFilter('severity', ['in' => $this->severitiesAtOrAbove($this->config->getEmailMinSeverity())])
-            ->addFieldToFilter('last_emailed_date', [['null' => true], ['lt' => $today]])
-            ->setOrder('last_seen_at', 'DESC')
-            ->setPageSize($this->config->getEmailMaxPerRun())
-            ->setCurPage(1);
-
-        $groups = array_values($collection->getItems());
-        if ($groups === []) {
-            return;
-        }
-        if ($this->notifier->send($groups)) {
-            $this->markEmailed($this->ids($groups), $today);
-        }
-    }
-
-    /**
-     * @param DataObject[]|\Magento\Framework\DataObject[] $groups
+     * @param \Magento\Framework\DataObject[] $groups
      * @return int[]
      */
     private function ids(array $groups): array

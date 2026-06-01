@@ -219,6 +219,29 @@ class Fingerprinter
      */
     private const GENERIC_TYPES = ['', 'main', 'report', 'error', 'exception', 'throwable'];
 
+    /**
+     * JS messages whose only meaningful discriminator IS the message itself
+     * (the property name, the missing identifier). These fire from countless
+     * different .js files but represent the same defect family — keeping the
+     * file in the fingerprint shatters them into dozens of micro-groups for
+     * no triage benefit. When the JS message matches one of these patterns we
+     * hash on (source, type, normalised_message) only and drop the file.
+     *
+     * Bounded quantifiers — ReDoS-safe.
+     */
+    private const FRAMEWORK_GENERIC_JS = [
+        '/^cannot (?:read|set) propert(?:y|ies) of (?:null|undefined)\b/',
+        '/^cannot read property [\'"][^\'"]{1,80}[\'"] of (?:null|undefined)\b/',
+        '/^[\'"]?[a-z_$][\\w$.]{0,80}[\'"]? is not (?:a function|defined|iterable|an object)\b/',
+        '/^undefined is not an? (?:object|function)\b/',
+        '/^null is not an? (?:object|function)\b/',
+        '/^cannot convert (?:undefined|null) to object\b/',
+        '/^failed to execute [\'"][^\'"]{1,40}[\'"] on [\'"][^\'"]{1,40}[\'"]:/',
+        '/^cannot convert a symbol value to a string\b/',
+        '/^[\'"]?undefined[\'"]? is not valid json\b/',
+        '/^the node before which the new node is to be inserted\b/',
+    ];
+
     public function fingerprint(
         string $source,
         string $type,
@@ -233,13 +256,59 @@ class Fingerprinter
                 $effectiveType = $mined;
             }
         }
+        $normalisedMessage = $this->normalizeMessage($message);
         $parts = [
             $source,
             mb_strtolower($effectiveType),
-            $this->normalizeMessage($message),
-            $this->normalizeFile((string)$file),
+            $normalisedMessage,
+            $this->fingerprintFile($source, (string)$file, $normalisedMessage),
         ];
         return hash('sha256', implode('|', $parts));
+    }
+
+    /**
+     * File component of the fingerprint. Three branches:
+     *
+     *   - JS + framework-generic message → empty string. The message + type
+     *     IS the discriminator; the script that happened to host the error
+     *     is noise (Magento serves the same generic JS error from dozens of
+     *     RequireJS chunks and we don't want one bucket per chunk).
+     *   - JS → basename only of the script path (after host/version/locale
+     *     stripping). A CDN host change or a theme-path layout change must
+     *     not split groups.
+     *   - PHP → full normalised file path (precise, useful for triage).
+     */
+    private function fingerprintFile(string $source, string $file, string $normalisedMessage): string
+    {
+        if ($file === '') {
+            return '';
+        }
+        if ($source !== 'js') {
+            return $this->normalizeFile($file);
+        }
+        if ($this->isFrameworkGenericJs($normalisedMessage)) {
+            return '';
+        }
+        $normalised = $this->normalizeFile($file);
+        if ($normalised === '') {
+            return '';
+        }
+        $slash = strrpos($normalised, '/');
+        return $slash === false ? $normalised : substr($normalised, $slash + 1);
+    }
+
+    /**
+     * True if the normalised JS message matches a known "framework-generic"
+     * pattern whose source file adds no triage value.
+     */
+    public function isFrameworkGenericJs(string $normalisedMessage): bool
+    {
+        foreach (self::FRAMEWORK_GENERIC_JS as $pattern) {
+            if (preg_match($pattern, $normalisedMessage) === 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -3,6 +3,55 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] - 2026-06-01
+
+### Changed
+- **One email per day is now the ONLY cadence.** The `immediate_digest` mode
+  was removed because in production it still emitted up to one email per
+  hour during sustained incidents, which is exactly the inbox-flooding the
+  module exists to prevent. The cron stays hourly (so the admin can change
+  the send-hour without re-scheduling) but actual delivery is hard-gated to
+  at most one summary per UTC day, regardless of how many groups appear.
+  Existing installs on `immediate_digest` are migrated to `daily_summary`
+  on `setup:upgrade` by `MigrateEmailModeToDaily` — no admin action needed.
+- **Ignore-patterns is now repo-wide and matches more fields.** The textarea
+  moved from "JavaScript Error Capture" to the **General** group and its
+  match scope widened from "message only" to **message + file path + error
+  class + stack trace** (case-insensitive). A single line like
+  `Vendor_Module` now silences every error originating from that module,
+  whether the module name appears in the exception FQN, the file path, or
+  the stack frames. Existing values are copied forward by
+  `MigrateIgnorePatternsToGeneral`.
+
+### Fixed
+- **JS framework-generic errors no longer shatter into one-bucket-per-script.**
+  Messages like `Cannot set/read properties of null/undefined ('xxx')`,
+  `X is not a function`, `undefined is not valid JSON`, and the DOM
+  `insertBefore` family are now hashed on `(source, type, message)` only —
+  the JS source file is intentionally dropped from the fingerprint. On a
+  real production export this collapsed 22+ separate `"Cannot set
+  properties of null (setting 'innerHTML')"` rows into one group. The
+  predicate is bounded-regex / ReDoS-safe.
+- **JS source file is now matched by basename**, not full theme path. A
+  CDN host swap or theme/locale layout change no longer splits the same
+  script into separate groups for non-framework-generic JS errors.
+
+### Added
+- `Setup/Patch/Data/RegroupErrorsV3` — re-runs the regrouper with the new
+  rules on `setup:upgrade` so existing sites collapse historical buckets
+  automatically. **Zero data loss**: events are MOVED to the surviving
+  canonical row and occurrence counts / first_seen / last_seen are
+  aggregated; the merge runs in a single transaction. The on-demand
+  `bin/magento panth:errormonitor:regroup [--dry-run]` already picks up
+  the new logic.
+
+### Notes
+- Empirically against the same kind of production export used to drive
+  1.4.0: a 518-line / ~300+ group profile collapses by an additional 25-30%
+  on top of the v2 gains, primarily from the JS framework-generic rule
+  and the basename-only JS file. No false-positive collisions observed
+  across the adversarial pair set.
+
 ## [1.4.0] - 2026-05-28
 
 ### Changed

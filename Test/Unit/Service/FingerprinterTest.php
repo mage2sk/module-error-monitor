@@ -135,6 +135,64 @@ class FingerprinterTest extends TestCase
         $this->assertSame($a, $b, 'CDN host and cache-busting query must not split groups');
     }
 
+    public function testJsBasenameCollapsesAcrossPaths(): void
+    {
+        // Same JS file (app.js) served from different theme paths must group.
+        $a = $this->fingerprinter->fingerprint('js', 'Error', 'boom',
+            'https://site.test/static/version1/frontend/Magento/luma/en_US/mage/app.js', 5);
+        $b = $this->fingerprinter->fingerprint('js', 'Error', 'boom',
+            'https://site.test/static/version2/frontend/Vendor/theme/de_DE/other/path/app.js', 5);
+        $this->assertSame($a, $b, 'Different theme/locale paths to the same script must collapse on basename');
+    }
+
+    public function testFrameworkGenericJsIgnoresFile(): void
+    {
+        // "Cannot set properties of null (setting 'innerHTML')" appears in
+        // dozens of unrelated scripts but is one defect family. Capture it as
+        // ONE group regardless of which .js file fired it.
+        $a = $this->fingerprinter->fingerprint('js', 'TypeError',
+            "Cannot set properties of null (setting 'innerHTML')",
+            'https://site.test/static/version1/frontend/X/Y/en_US/widget-a.js', 10);
+        $b = $this->fingerprinter->fingerprint('js', 'TypeError',
+            "Cannot set properties of null (setting 'innerHTML')",
+            'https://other.test/static/widget-b.js', 99);
+        $c = $this->fingerprinter->fingerprint('js', 'TypeError',
+            "Cannot set properties of null (setting 'innerHTML')",
+            null, null);
+        $this->assertSame($a, $b);
+        $this->assertSame($a, $c, 'Even null file must hash the same as a populated one for framework-generic JS');
+    }
+
+    public function testFrameworkGenericJsPredicate(): void
+    {
+        $this->assertTrue($this->fingerprinter->isFrameworkGenericJs(
+            "cannot set properties of null (setting 'innerhtml')"
+        ));
+        $this->assertTrue($this->fingerprinter->isFrameworkGenericJs(
+            "cannot read properties of undefined (reading 'qty')"
+        ));
+        $this->assertTrue($this->fingerprinter->isFrameworkGenericJs(
+            "t.\$_tawk.i18next is not a function"
+        ));
+        $this->assertTrue($this->fingerprinter->isFrameworkGenericJs(
+            "failed to execute 'insertbefore' on 'node':"
+        ));
+        $this->assertFalse($this->fingerprinter->isFrameworkGenericJs(
+            'uncaught error: script error for "magento_theme/js/theme"'
+        ));
+    }
+
+    public function testPhpFileStillFullPath(): void
+    {
+        // PHP fingerprinting still uses the full normalised file — the file
+        // path IS a useful triage signal for server-side errors.
+        $a = $this->fingerprinter->fingerprint('php', 'TypeError', 'boom',
+            '/var/www/vhosts/site/vendor/foo/Helper/A.php', 10);
+        $b = $this->fingerprinter->fingerprint('php', 'TypeError', 'boom',
+            '/var/www/vhosts/site/vendor/foo/Helper/B.php', 10);
+        $this->assertNotSame($a, $b, 'PHP file differences must still split groups');
+    }
+
     public function testNormalizeMessageStripsStackTrace(): void
     {
         $normalized = $this->fingerprinter->normalizeMessage("Boom happened\nStack trace:\n#0 /x.php(1): foo()");

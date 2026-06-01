@@ -7,8 +7,9 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
     <group id="default">
-        <!-- Hourly check; actual delivery is gated (daily summary at send-hour,
-             or immediate digest each run). Never sends more than the mode allows. -->
+        <!-- Hourly check; actual delivery is gated by send-hour AND a per-day
+             flag, so at most ONE summary email is sent per UTC day regardless
+             of how often this cron fires. -->
         <job name="panth_errormonitor_dispatch_notifications"
              instance="Panth\ErrorMonitor\Cron\DispatchNotifications" method="execute">
             <schedule>5 * * * *</schedule>

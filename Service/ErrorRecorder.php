@@ -51,7 +51,7 @@ class ErrorRecorder
         }
         self::$recording = true;
         try {
-            if (trim($payload->message) === '' || $this->isIgnored($payload->message)) {
+            if (trim($payload->message) === '' || $this->isIgnored($payload)) {
                 return null;
             }
 
@@ -146,13 +146,28 @@ class ErrorRecorder
         ]);
     }
 
-    private function isIgnored(string $message): bool
+    /**
+     * Drop the error if any configured substring appears in its message, file
+     * path, error class FQN or stack trace — case-insensitive. Reads the
+     * canonical config path (general/ignore_patterns) and falls back to the
+     * 1.4.x location (js_capture/ignore_patterns) so admins who upgrade before
+     * MigrateIgnorePatternsToGeneral runs keep their list.
+     */
+    private function isIgnored(ErrorPayload $payload): bool
     {
-        $raw = (string)$this->scopeConfig->getValue('panth_errormonitor/js_capture/ignore_patterns');
+        $raw = (string)$this->scopeConfig->getValue('panth_errormonitor/general/ignore_patterns');
+        if ($raw === '') {
+            $raw = (string)$this->scopeConfig->getValue('panth_errormonitor/js_capture/ignore_patterns');
+        }
         if ($raw === '') {
             return false;
         }
-        $haystack = mb_strtolower($message);
+        $haystack = mb_strtolower(
+            $payload->message
+            . "\n" . ($payload->file ?? '')
+            . "\n" . $payload->type
+            . "\n" . ($payload->stackTrace ?? '')
+        );
         foreach (preg_split('/\r\n|\r|\n/', $raw) ?: [] as $line) {
             $line = trim($line);
             if ($line !== '' && str_contains($haystack, mb_strtolower($line))) {

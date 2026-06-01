@@ -13,6 +13,10 @@
         <panth_errormonitor>
             <general>
                 <enabled>1</enabled>
+                <ignore_patterns>Script error.
+ResizeObserver loop limit exceeded
+ResizeObserver loop completed with undelivered notifications.
+Non-Error promise rejection captured</ignore_patterns>
             </general>
             <php_capture>
                 <enabled>1</enabled>
@@ -23,10 +27,6 @@
                 <sample_rate>100</sample_rate>
                 <rate_limit_per_minute>30</rate_limit_per_minute>
                 <max_body_kb>16</max_body_kb>
-                <ignore_patterns>Script error.
-ResizeObserver loop limit exceeded
-ResizeObserver loop completed with undelivered notifications.
-Non-Error promise rejection captured</ignore_patterns>
             </js_capture>
             <email>
                 <enabled>0</enabled>

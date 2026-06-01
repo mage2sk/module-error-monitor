@@ -75,11 +75,21 @@ class Config extends AbstractConfig
     }
 
     /**
-     * @return string[] Lower-cased ignore substrings.
+     * Lower-cased ignore substrings, applied at capture time across the
+     * error's message, file path, error class FQN and stack trace.
+     *
+     * Reads the canonical location (general/ignore_patterns) and falls back
+     * to the legacy location (js_capture/ignore_patterns) so customers that
+     * upgrade before MigrateIgnorePatternsToGeneral runs keep their list.
+     *
+     * @return string[]
      */
     public function getIgnorePatterns($storeId = null): array
     {
-        $raw = (string)$this->getConfigValue('js_capture', 'ignore_patterns', $storeId);
+        $raw = (string)$this->getConfigValue('general', 'ignore_patterns', $storeId);
+        if ($raw === '') {
+            $raw = (string)$this->getConfigValue('js_capture', 'ignore_patterns', $storeId);
+        }
         if ($raw === '') {
             return [];
         }
