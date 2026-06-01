@@ -3,6 +3,27 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.4] - 2026-06-01
+
+### Fixed
+- **Post-deploy stale-cache JS noise is silenced out of the box.** When a
+  user's browser holds a stale `requirejs-config.json` / webpack manifest
+  after a deploy, every module load fails and surfaces as
+  `Uncaught Error: Script error for "X"` (one group per failed module —
+  on a real production export 31 of 47 visible groups were this single
+  family) or `ChunkLoadError: Loading chunk N failed after 3 retries`.
+  These cannot be acted on — they clear themselves as each visitor's
+  browser refreshes — so they belong in the default ignore set. Three new
+  default lines added to `general/ignore_patterns`:
+    - `Script error for`
+    - `ChunkLoadError`
+    - `Loading chunk`
+  Fresh installs pick these up automatically. Existing installs get them
+  appended to their saved value by `Setup/Patch/Data/AddStaleCacheDefaults`
+  on `setup:upgrade`, **deduped against what's already there** so a
+  customer-edited list is never clobbered. Empirically: collapses ~74% of
+  the post-deploy noise without losing any actionable signal.
+
 ## [1.5.3] - 2026-06-01
 
 ### Fixed

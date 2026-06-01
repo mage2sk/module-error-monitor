@@ -16,6 +16,9 @@
                 <auto_pause_window_minutes>5</auto_pause_window_minutes>
                 <filter_ecosystem_alerts>1</filter_ecosystem_alerts>
                 <ignore_patterns>Script error.
+Script error for
+ChunkLoadError
+Loading chunk
 ResizeObserver loop limit exceeded
 ResizeObserver loop completed with undelivered notifications.
 Non-Error promise rejection captured</ignore_patterns>
