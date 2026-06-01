@@ -20,10 +20,13 @@ use Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup as ErrorGroupResource;
 
 class View extends Template
 {
-    private const RECENT_EVENT_LIMIT = 50;
+    public const EVENTS_PER_PAGE = 50;
     private const DISTINCT_URL_LIMIT = 50;
+    /** Cap displayed pages so a 10k-event group can't blow up the render. */
+    private const MAX_PAGES = 200;
 
     private ?ErrorGroup $group = null;
+    private ?int $eventCount = null;
 
     public function __construct(
         Context $context,
@@ -61,9 +64,107 @@ class View extends Template
         $collection = $this->eventCollectionFactory->create();
         $collection->addFieldToFilter('group_id', (int)$group->getId())
             ->setOrder('created_at', 'DESC')
-            ->setPageSize(self::RECENT_EVENT_LIMIT)
-            ->setCurPage(1);
+            ->setPageSize(self::EVENTS_PER_PAGE)
+            ->setCurPage($this->getCurrentPage());
         return $collection->getItems();
+    }
+
+    public function getCurrentPage(): int
+    {
+        $page = (int)$this->getRequest()->getParam('page', 1);
+        if ($page < 1) {
+            return 1;
+        }
+        $total = $this->getTotalPages();
+        return $page > $total ? $total : $page;
+    }
+
+    public function getTotalEventCount(): int
+    {
+        if ($this->eventCount !== null) {
+            return $this->eventCount;
+        }
+        $group = $this->getGroup();
+        if (!$group->getId()) {
+            return $this->eventCount = 0;
+        }
+        $conn = $this->eventResource->getConnection();
+        $table = $this->eventResource->getMainTable();
+        $count = (int)$conn->fetchOne(
+            $conn->select()
+                ->from($table, [new \Magento\Framework\DB\Sql\Expression('COUNT(*)')])
+                ->where('group_id = ?', (int)$group->getId())
+        );
+        return $this->eventCount = $count;
+    }
+
+    public function getTotalPages(): int
+    {
+        $count = $this->getTotalEventCount();
+        if ($count <= 0) {
+            return 1;
+        }
+        $pages = (int)ceil($count / self::EVENTS_PER_PAGE);
+        return $pages > self::MAX_PAGES ? self::MAX_PAGES : $pages;
+    }
+
+    /**
+     * Build a compact 1 … (cur-2 cur-1 cur cur+1 cur+2) … last window so
+     * groups with hundreds of pages stay one line wide.
+     *
+     * @return array<int, array{page:int, url:string, current:bool, label:string}>
+     */
+    public function getPaginationLinks(): array
+    {
+        $cur = $this->getCurrentPage();
+        $last = $this->getTotalPages();
+        if ($last <= 1) {
+            return [];
+        }
+        $pages = [];
+        $candidates = array_unique([
+            1,
+            $cur - 2, $cur - 1, $cur, $cur + 1, $cur + 2,
+            $last,
+        ]);
+        sort($candidates);
+        $prev = 0;
+        foreach ($candidates as $p) {
+            if ($p < 1 || $p > $last) {
+                continue;
+            }
+            if ($prev > 0 && $p - $prev > 1) {
+                $pages[] = ['page' => 0, 'url' => '', 'current' => false, 'label' => '…'];
+            }
+            $pages[] = [
+                'page'    => $p,
+                'url'     => $this->getPageUrl($p),
+                'current' => $p === $cur,
+                'label'   => (string)$p,
+            ];
+            $prev = $p;
+        }
+        return $pages;
+    }
+
+    public function getPrevPageUrl(): ?string
+    {
+        $cur = $this->getCurrentPage();
+        return $cur > 1 ? $this->getPageUrl($cur - 1) : null;
+    }
+
+    public function getNextPageUrl(): ?string
+    {
+        $cur = $this->getCurrentPage();
+        return $cur < $this->getTotalPages() ? $this->getPageUrl($cur + 1) : null;
+    }
+
+    private function getPageUrl(int $page): string
+    {
+        return $this->getUrl(
+            'panth_errormonitor/error/view',
+            ['group_id' => (int)$this->getGroup()->getId(), 'page' => $page]
+        );
     }
 
     /**

@@ -93,8 +93,26 @@ $group = $block->getGroup();
     </div>
 
     <div class="admin__page-section">
+        <?php
+            $totalEvents = $block->getTotalEventCount();
+            $perPage     = \Panth\ErrorMonitor\Block\Adminhtml\Error\View::EVENTS_PER_PAGE;
+            $currentPage = $block->getCurrentPage();
+            $totalPages  = $block->getTotalPages();
+            $firstIdx    = $totalEvents > 0 ? (($currentPage - 1) * $perPage) + 1 : 0;
+            $lastIdx     = min($currentPage * $perPage, $totalEvents);
+        ?>
         <div class="admin__page-section-title">
-            <span class="title"><?= $escaper->escapeHtml(__('Recent Occurrences (latest %1)', 50)) ?></span>
+            <span class="title">
+                <?= $escaper->escapeHtml(__('Recent Occurrences')) ?>
+                <?php if ($totalEvents > 0): ?>
+                    <small style="color:#666;font-weight:normal;">
+                        &mdash;
+                        <?= $escaper->escapeHtml(
+                            __('showing %1–%2 of %3', $firstIdx, $lastIdx, $totalEvents)
+                        ) ?>
+                    </small>
+                <?php endif; ?>
+            </span>
         </div>
         <?php $events = $block->getRecentEvents(); ?>
         <?php if (!$events): ?>
@@ -126,6 +144,39 @@ $group = $block->getGroup();
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
+
+            <?php $links = $block->getPaginationLinks(); ?>
+            <?php if ($links): ?>
+                <div class="panth-errormonitor-pagination" style="display:flex;align-items:center;gap:6px;margin-top:12px;flex-wrap:wrap;">
+                    <?php $prev = $block->getPrevPageUrl(); ?>
+                    <?php if ($prev): ?>
+                        <a class="action-default" href="<?= $escaper->escapeUrl($prev) ?>">&laquo; <?= $escaper->escapeHtml(__('Prev')) ?></a>
+                    <?php else: ?>
+                        <span class="action-default disabled" style="opacity:0.4;cursor:default;">&laquo; <?= $escaper->escapeHtml(__('Prev')) ?></span>
+                    <?php endif; ?>
+
+                    <?php foreach ($links as $link): ?>
+                        <?php if ($link['page'] === 0): ?>
+                            <span style="padding:0 4px;color:#888;"><?= $escaper->escapeHtml($link['label']) ?></span>
+                        <?php elseif ($link['current']): ?>
+                            <strong style="padding:6px 10px;background:#1979c3;color:#fff;border-radius:3px;"><?= $escaper->escapeHtml($link['label']) ?></strong>
+                        <?php else: ?>
+                            <a class="action-default" href="<?= $escaper->escapeUrl($link['url']) ?>"><?= $escaper->escapeHtml($link['label']) ?></a>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+
+                    <?php $next = $block->getNextPageUrl(); ?>
+                    <?php if ($next): ?>
+                        <a class="action-default" href="<?= $escaper->escapeUrl($next) ?>"><?= $escaper->escapeHtml(__('Next')) ?> &raquo;</a>
+                    <?php else: ?>
+                        <span class="action-default disabled" style="opacity:0.4;cursor:default;"><?= $escaper->escapeHtml(__('Next')) ?> &raquo;</span>
+                    <?php endif; ?>
+
+                    <span style="margin-left:8px;color:#666;font-size:12px;">
+                        <?= $escaper->escapeHtml(__('Page %1 of %2', $currentPage, $totalPages)) ?>
+                    </span>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>

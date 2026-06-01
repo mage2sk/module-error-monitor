@@ -3,6 +3,29 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.2] - 2026-06-01
+
+### Fixed
+- **Recent Occurrences no longer show as empty `{channel: main}` cards.**
+  Some Magento code paths (notably the cron observer wrapping a third-party
+  cron job's exception) log via `$logger->error($exception->getTraceAsString())`
+  — the message IS the raw stack trace, with no exception object in context.
+  Until now the capture stored the trace in the `message` column and left
+  `stack_trace` NULL, so the detail page rendered every such occurrence as
+  an empty card with just the channel context. The handler now detects a
+  stack-trace-shaped message (starts with `#0 `), moves it to the
+  `stack_trace` column, fills `file`/`line` from the top frame, and
+  synthesises a one-line readable message from that frame
+  (e.g. `Magento\Variable\Model\Variable->beforeSave() at
+  magento/framework/Model/AbstractModel.php:663`).
+
+### Added
+- **Pagination on the error detail page's Recent Occurrences section.** Was
+  hard-capped at 50; now shows 50 per page with Prev / Next, a compact
+  `1 … 3 4 5 … N` page strip, and a `showing X–Y of Z` counter. Page count
+  is capped at 200 so a pathological group with millions of events can't
+  blow up the render.
+
 ## [1.5.1] - 2026-06-01
 
 ### Added

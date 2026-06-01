@@ -164,6 +164,23 @@ class DbHandler extends AbstractProcessingHandler
                 $stack = trim(substr($message, $pos + strlen('Stack trace:')));
                 $message = trim(substr($message, 0, $pos));
             }
+            // Cron and other code paths sometimes call
+            // `$logger->error($exception->getTraceAsString())` — the message
+            // IS the raw stack trace ("#0 /path...\n#1 ..."). Without this
+            // fixup the event row stores the trace in the `message` column
+            // and leaves `stack_trace` NULL, so the detail page renders
+            // empty Recent Occurrences (only the {channel: main} context).
+            // Move the trace to `stack_trace` and synthesise a one-line
+            // human-readable message from the top frame.
+            if ($stack === null && preg_match('/^#0\s+\S/', ltrim($message))) {
+                $stack = trim($message);
+                $message = $this->synthesizeMessageFromTrace($stack);
+                [$frameFile, $frameLine] = $this->topFrameLocation($stack);
+                if ($frameFile !== null) {
+                    $file = $frameFile;
+                    $line = $frameLine;
+                }
+            }
             // Try to mine the real exception class / error family out of the
             // message. The Monolog channel ("main", "report", ...) is almost
             // never the actual error type and produces useless grouping.
@@ -209,5 +226,52 @@ class DbHandler extends AbstractProcessingHandler
             return $_SERVER[$key];
         }
         return null;
+    }
+
+    /**
+     * Derive a one-line, grid-readable message from the first stack frame.
+     * Format: "Class::method() at file.php:line" with vendor/ prefix dropped.
+     * Falls back to a generic label when the frame can't be parsed.
+     */
+    private function synthesizeMessageFromTrace(string $stack): string
+    {
+        // Match: "#0 [path](line): Foo\Bar->baz(args)" with line optional.
+        if (preg_match('/^#0\s+(\S+?)(?:\((\d+)\))?:\s+(\S+?(?:->|::)\S+?)\s*\(/m', $stack, $m)) {
+            $file = (string)$m[1];
+            $line = (string)($m[2] ?? '');
+            $call = (string)$m[3];
+            $base = $this->shortFilePath($file);
+            return $call . '() at ' . $base . ($line !== '' ? ':' . $line : '');
+        }
+        // Fallback: just take the first frame line, trimmed and capped.
+        $first = strtok($stack, "\n");
+        if (is_string($first) && $first !== '') {
+            return mb_substr(trim($first), 0, 191);
+        }
+        return 'Cron exception (see stack trace)';
+    }
+
+    /**
+     * @return array{0: string|null, 1: int|null}
+     */
+    private function topFrameLocation(string $stack): array
+    {
+        if (preg_match('/^#0\s+(\S+?)(?:\((\d+)\))?:/m', $stack, $m)) {
+            return [(string)$m[1], isset($m[2]) ? (int)$m[2] : null];
+        }
+        return [null, null];
+    }
+
+    private function shortFilePath(string $path): string
+    {
+        // Trim any leading absolute prefix up to and including /vendor/, so
+        // "/var/www/.../docroot/vendor/foo/bar/X.php" becomes "foo/bar/X.php".
+        if (preg_match('~/vendor/(.+)$~', $path, $m)) {
+            return $m[1];
+        }
+        if (preg_match('~/(?:app/code|generated|var)/(.+)$~', $path, $m)) {
+            return $m[1];
+        }
+        return basename($path);
     }
 }
