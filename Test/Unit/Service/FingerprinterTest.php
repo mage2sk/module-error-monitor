@@ -172,7 +172,7 @@ class FingerprinterTest extends TestCase
             "cannot read properties of undefined (reading 'qty')"
         ));
         $this->assertTrue($this->fingerprinter->isFrameworkGenericJs(
-            "t.\$_tawk.i18next is not a function"
+            "t.\$_widget.api is not a function"
         ));
         $this->assertTrue($this->fingerprinter->isFrameworkGenericJs(
             "failed to execute 'insertbefore' on 'node':"

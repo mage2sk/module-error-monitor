@@ -25,10 +25,22 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Master switch. When off, no errors are captured and no emails are sent.</comment>
                 </field>
+                <field id="auto_pause_window_minutes" translate="label comment" type="text" sortOrder="15"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Auto-pause After Deploy (minutes)</label>
+                    <validate>validate-digits validate-digits-range digits-range-0-120</validate>
+                    <comment><![CDATA[<b>Default 15.</b> Many deploys skip <code>maintenance:enable</code>; the resulting visitor/bot hits then floods the error log with stale-cache noise. This module watches the mtime of <code>pub/static/deployed_version.txt</code>, <code>generated/code</code> and <code>generated/metadata</code> — touched only by <code>setup:static-content:deploy</code> and <code>setup:di:compile</code> — and suspends capture for this many minutes after the most recent touch. Set to <code>0</code> to disable.]]></comment>
+                </field>
+                <field id="filter_ecosystem_alerts" translate="label comment" type="select" sortOrder="18"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Auto-Filter Sibling Module Operational Alerts</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Drops log lines matching <code>[VendorModuleName] BLOCKED/REJECTED/DENIED ...</code> — the family-wide alert convention used by sibling security / firewall modules in the Panth ecosystem. These are operational events ("we blocked something") rather than defects and pollute the error grid. Recommended ON.]]></comment>
+                </field>
                 <field id="ignore_patterns" translate="label comment" type="textarea" sortOrder="20"
                        showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Ignore Errors Matching</label>
-                    <comment><![CDATA[One substring per line, matched case-insensitively. An error is dropped at capture time if the substring appears anywhere in its <b>message</b>, <b>file path</b>, <b>error class</b>, or <b>stack trace</b>. Use this to silence a whole noisy module (e.g. <code>Vendor_Module</code>, <code>vendor/somevendor/</code>, <code>Apptrian\Minify</code>) or a specific message family (e.g. <code>Deprecated Functionality:</code>, <code>Page URL:</code>).]]></comment>
+                    <comment><![CDATA[One substring per line, matched case-insensitively. An error is dropped at capture time if the substring appears anywhere in its <b>message</b>, <b>file path</b>, <b>error class</b>, or <b>stack trace</b>. Use this to silence a whole noisy module (e.g. <code>Vendor_Module</code>, <code>vendor/somevendor/</code>) or a specific message family (e.g. <code>Deprecated Functionality:</code>, <code>Page URL:</code>).]]></comment>
                 </field>
             </group>
 

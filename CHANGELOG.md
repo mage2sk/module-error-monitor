@@ -3,6 +3,51 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.1] - 2026-06-01
+
+### Added
+- **Auto-detect deploy without maintenance mode.** Many production deploys
+  skip `bin/magento maintenance:enable`; the resulting visitor / bot hits
+  during the rebuild then flood the error log with stale-cache "Script
+  error for X" / RequireJS failures and missing-class warnings. The
+  `DeploymentGuard` now also watches the mtime of three filesystem signals
+  that ONLY change on a real deploy —
+  `pub/static/deployed_version.txt` (touched by
+  `setup:static-content:deploy`), `generated/code/` and
+  `generated/metadata/` (touched by `setup:di:compile`) — and suspends
+  capture for the configured window after the most recent touch. New
+  setting **General → Auto-pause After Deploy (minutes)**, default `15`,
+  set to `0` to disable. `var/cache` is intentionally NOT watched because
+  every admin config save touches it — would have produced too many false
+  positives.
+- **Auto-filter sibling-module operational alerts.** New setting
+  **General → Auto-Filter Sibling Module Operational Alerts**, default
+  **on**. Drops messages matching the family-wide convention
+  `[VendorModuleName] BLOCKED/REJECTED/DENIED/REFUSED/DROPPED/QUARANTINED …`
+  used by sibling security / firewall modules. These are operational
+  events ("we blocked something") rather than defects and previously
+  produced dozens of one-occurrence groups in the grid. The pattern is
+  bounded regex / ReDoS-safe and is matched ONLY at the start of the
+  message, so a legitimate exception that happens to mention a block in
+  its body is not swallowed.
+
+### Fixed
+- **Regrouper no longer overwrites a meaningful error type with a less
+  meaningful one.** When the stored type was a real FQN such as
+  `Elasticsearch\Common\Exceptions\BadRequest400Exception`, the v1.4.0
+  / 1.5.0 regrouper called `extractType()` unconditionally and replaced
+  it with whatever pattern matched first in the message (in the ES case,
+  the `caused_by` tag). The regrouper now only mines a sharper type when
+  the stored one is a channel-name placeholder (`main`, `report`,
+  `error`, `exception`, `throwable`, or empty).
+
+### Notes
+- All three changes are additive — no schema change, no config migration,
+  no risk to existing data. `setup:upgrade` runs no new patches; defaults
+  ship the new auto-detect and ecosystem-alert filter on. To revert the
+  new behaviour: set Auto-pause After Deploy to `0`, set Auto-Filter
+  Sibling Module Operational Alerts to No.
+
 ## [1.5.0] - 2026-06-01
 
 ### Changed

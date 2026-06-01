@@ -30,6 +30,21 @@ class ErrorRecorder
     /** Marker prefix on our own warnings so the handler can skip them. */
     public const INTERNAL_MARKER = '[PanthErrorMonitor]';
 
+    /**
+     * Operational-alert convention used family-wide by sibling security /
+     * firewall modules in this ecosystem: a single-bracket vendor-module tag
+     * followed by an action verb. These are events the operator took action
+     * on, not defects, and they bury the real-bug signal in the grid.
+     * Match scope intentionally does NOT name any specific module so the
+     * open-source code stays generic (per public-docs-generic memory).
+     *
+     * Examples it suppresses (when general/filter_ecosystem_alerts is on):
+     *   [PanthMalwareScanner] BLOCKED frontend dispatch: ...
+     *   [PanthFirewall] REJECTED request from ip ...
+     *   [PanthBotShield] DENIED user-agent ...
+     */
+    private const ECOSYSTEM_ALERT_PATTERN = '/^\[Panth[A-Z][A-Za-z0-9_]{0,40}\]\s+(?:BLOCKED|REJECTED|DENIED|REFUSED|DROPPED|QUARANTINED)\b/';
+
     /** Re-entrancy flag shared across all instances. */
     private static bool $recording = false;
 
@@ -147,14 +162,24 @@ class ErrorRecorder
     }
 
     /**
-     * Drop the error if any configured substring appears in its message, file
-     * path, error class FQN or stack trace — case-insensitive. Reads the
-     * canonical config path (general/ignore_patterns) and falls back to the
-     * 1.4.x location (js_capture/ignore_patterns) so admins who upgrade before
+     * Drop the error if (a) the ecosystem-alert auto-filter is on AND the
+     * message matches the family-wide BLOCKED/REJECTED pattern, OR (b) any
+     * configured substring appears in its message, file path, error class
+     * FQN or stack trace — case-insensitive. Reads the canonical config
+     * path (general/ignore_patterns) and falls back to the 1.4.x location
+     * (js_capture/ignore_patterns) so admins who upgrade before
      * MigrateIgnorePatternsToGeneral runs keep their list.
      */
     private function isIgnored(ErrorPayload $payload): bool
     {
+        // (a) Sibling-module operational alerts. Default-on; checked first
+        // because it's a single bounded-regex test and short-circuits the
+        // textarea scan for the common case.
+        if ($this->scopeConfig->isSetFlag('panth_errormonitor/general/filter_ecosystem_alerts')
+            && preg_match(self::ECOSYSTEM_ALERT_PATTERN, $payload->message) === 1) {
+            return true;
+        }
+
         $raw = (string)$this->scopeConfig->getValue('panth_errormonitor/general/ignore_patterns');
         if ($raw === '') {
             $raw = (string)$this->scopeConfig->getValue('panth_errormonitor/js_capture/ignore_patterns');

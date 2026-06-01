@@ -104,6 +104,17 @@ class Regrouper
     }
 
     /**
+     * Channel-ish / placeholder type names that carry no triage value —
+     * safe to overwrite with whatever extractType mines from the message.
+     */
+    private const GENERIC_TYPES = ['', 'main', 'report', 'error', 'exception', 'throwable'];
+
+    private function isGenericType(string $type): bool
+    {
+        return in_array(strtolower(trim($type)), self::GENERIC_TYPES, true);
+    }
+
+    /**
      * Walk the table once and compute what would change.
      *
      * @return array{
@@ -134,9 +145,20 @@ class Regrouper
             $file = (string)$g->getData('file');
             $line = $g->getData('line') !== null ? (int)$g->getData('line') : null;
 
-            // Try to mine a sharper type out of the stored message.
-            $extracted = $this->fingerprinter->extractType($message);
-            $newType = ($extracted !== null && $extracted !== '') ? $extracted : $oldType;
+            // Try to mine a sharper type out of the stored message — but ONLY
+            // when the stored type is itself useless (channel-name fallback or
+            // empty). A meaningful FQN like
+            // "Elasticsearch\Common\Exceptions\BadRequest400Exception" must
+            // NOT be overwritten with whatever extractType happens to pull
+            // (e.g. the ES caused_by tag is more specific but less actionable
+            // for an admin scanning the grid).
+            $newType = $oldType;
+            if ($this->isGenericType($oldType)) {
+                $extracted = $this->fingerprinter->extractType($message);
+                if ($extracted !== null && $extracted !== '') {
+                    $newType = $extracted;
+                }
+            }
 
             $newFp = $this->fingerprinter->fingerprint($source, $newType, $message, $file, $line);
 
