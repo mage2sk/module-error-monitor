@@ -13,7 +13,7 @@
         <panth_errormonitor>
             <general>
                 <enabled>1</enabled>
-                <auto_pause_window_minutes>15</auto_pause_window_minutes>
+                <auto_pause_window_minutes>5</auto_pause_window_minutes>
                 <filter_ecosystem_alerts>1</filter_ecosystem_alerts>
                 <ignore_patterns>Script error.
 ResizeObserver loop limit exceeded

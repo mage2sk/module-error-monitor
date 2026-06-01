@@ -3,6 +3,37 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.3] - 2026-06-01
+
+### Fixed
+- **Auto-pause no longer silences capture forever.** 1.5.1's deploy
+  auto-detect used a sliding "any watched mtime within the last N minutes"
+  window — on environments where `generated/code/` has its mtime
+  continuously refreshed (on-demand interceptor generation, cron-time
+  plugin work, etc.) the window kept restarting and capture was silenced
+  indefinitely. Rewritten as **delta detection**: a baseline of the last
+  observed mtimes is stored in a Flag; capture is suspended only when a
+  path's mtime is **strictly newer than what was recorded last time**, and
+  the pause runs until `(newest_change + window)` — which is then cached
+  in `panth_errormonitor_autopause_until` so subsequent checks don't have
+  to re-evaluate. First observation establishes the baseline and never
+  pauses. Self-healing on upgrade: the first request after deploying
+  1.5.3 baselines from current mtimes and capture resumes.
+- Default auto-pause window reduced 15 → 5 minutes (less blast radius
+  if the heuristic ever misfires on a future environment).
+
+### Added
+- `bin/magento panth:errormonitor:status` — single-glance answer to "why
+  isn't capture working?". Shows every capture gate (master / PHP / JS /
+  email switches, min severity), every suspension source (maintenance
+  mode, explicit-pause flag, auto-pause-until + the live reason), the
+  watched deploy-marker paths with current vs last-seen mtimes, the
+  configured ignore-pattern count, and a tally of events actually
+  recorded in the last hour / 24 hours. Pass `--reset-auto-detect` to
+  wipe the baseline + pause flags and force re-baselining on the next
+  capture attempt — the canonical recovery step when capture appears
+  stuck after a deploy.
+
 ## [1.5.2] - 2026-06-01
 
 ### Fixed

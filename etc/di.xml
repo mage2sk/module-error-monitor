@@ -61,6 +61,7 @@
                 <item name="panth_errormonitor_pause" xsi:type="object">Panth\ErrorMonitor\Console\Command\PauseCaptureCommand</item>
                 <item name="panth_errormonitor_resume" xsi:type="object">Panth\ErrorMonitor\Console\Command\ResumeCaptureCommand</item>
                 <item name="panth_errormonitor_regroup" xsi:type="object">Panth\ErrorMonitor\Console\Command\RegroupCommand</item>
+                <item name="panth_errormonitor_status" xsi:type="object">Panth\ErrorMonitor\Console\Command\StatusCommand</item>
             </argument>
         </arguments>
     </type>
