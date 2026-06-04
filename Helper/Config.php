@@ -44,6 +44,19 @@ class Config extends AbstractConfig
         return (string)($this->getConfigValue('php_capture', 'min_severity', $storeId) ?: 'error');
     }
 
+    /**
+     * Window (seconds) over which repeat occurrences of the same error are
+     * coalesced into a single database write. 0 disables coalescing.
+     */
+    public function getPhpThrottleWindowSeconds($storeId = null): int
+    {
+        $raw = $this->getConfigValue('php_capture', 'throttle_window_seconds', $storeId);
+        if ($raw === null || $raw === '') {
+            return 60;
+        }
+        return max(0, (int)$raw);
+    }
+
     /* ------------------------------------------------------------------ JS */
 
     public function isJsCaptureEnabled($storeId = null): bool

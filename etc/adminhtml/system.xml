@@ -60,6 +60,13 @@
                     <comment>Only errors at this level or more severe are stored.</comment>
                     <depends><field id="enabled">1</field></depends>
                 </field>
+                <field id="throttle_window_seconds" translate="label comment" type="text" sortOrder="30"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Coalesce Window (seconds)</label>
+                    <validate>validate-digits</validate>
+                    <comment><![CDATA[When the same error repeats, only one database write is made per group within this window; the rest are counted in cache and folded into the total. Protects the database and binary log from a single high-frequency error. Default 60. Set to 0 to write every occurrence.]]></comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
             </group>
 
             <group id="js_capture" translate="label" type="text" sortOrder="30"

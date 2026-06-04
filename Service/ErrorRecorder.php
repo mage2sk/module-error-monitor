@@ -48,11 +48,15 @@ class ErrorRecorder
     /** Re-entrancy flag shared across all instances. */
     private static bool $recording = false;
 
+    /** Default coalescing window when none is configured (seconds). */
+    private const DEFAULT_THROTTLE_WINDOW = 60;
+
     public function __construct(
         private readonly ErrorGroupResource $groupResource,
         private readonly ErrorEventResource $eventResource,
         private readonly Fingerprinter $fingerprinter,
-        private readonly ScopeConfigInterface $scopeConfig
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly CaptureThrottle $throttle
     ) {
     }
 
@@ -78,7 +82,18 @@ class ErrorRecorder
                 $payload->line
             );
 
-            $groupId = $this->upsertGroup($fingerprint, $payload);
+            // Coalesce repeat occurrences of the same error within a short
+            // window. A non-positive return means this occurrence was absorbed
+            // into the cache counter — we touch neither table, which keeps a
+            // hot/looping error from flooding the DB (and the row-based binary
+            // log) with one UPDATE + one INSERT per hit. The positive value is
+            // the number of occurrences to fold into occurrence_count now.
+            $increment = $this->throttle->register($fingerprint, $this->throttleWindow());
+            if ($increment <= 0) {
+                return null;
+            }
+
+            $groupId = $this->upsertGroup($fingerprint, $payload, $increment);
             if ($groupId > 0) {
                 $this->insertEvent($groupId, $payload);
             }
@@ -97,19 +112,23 @@ class ErrorRecorder
      * The LAST_INSERT_ID(group_id) trick returns the group id on both insert
      * and update so we always have it for the event row.
      */
-    private function upsertGroup(string $fingerprint, ErrorPayload $payload): int
+    private function upsertGroup(string $fingerprint, ErrorPayload $payload, int $increment): int
     {
         $conn = $this->groupResource->getConnection();
         $table = $this->groupResource->getMainTable();
         $now = gmdate('Y-m-d H:i:s');
+        // Number of occurrences this write accounts for (1 on the hot path,
+        // more when the throttle is flushing coalesced hits). A validated int,
+        // so it is safe to inline rather than bind.
+        $increment = max(1, $increment);
 
         $sql = 'INSERT INTO ' . $conn->quoteIdentifier($table)
             . ' (fingerprint, source, severity, error_type, message, file, line,'
             . ' status, occurrence_count, store_id, first_seen_at, last_seen_at, created_at, updated_at)'
-            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ' . ErrorGroup::STATUS_NEW . ', 1, ?, ?, ?, ?, ?)'
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ' . ErrorGroup::STATUS_NEW . ', ' . $increment . ', ?, ?, ?, ?, ?)'
             . ' ON DUPLICATE KEY UPDATE'
             . ' group_id = LAST_INSERT_ID(group_id),'
-            . ' occurrence_count = occurrence_count + 1,'
+            . ' occurrence_count = occurrence_count + ' . $increment . ','
             . ' last_seen_at = VALUES(last_seen_at),'
             . ' severity = VALUES(severity),'
             . ' message = VALUES(message),'
@@ -200,6 +219,19 @@ class ErrorRecorder
             }
         }
         return false;
+    }
+
+    /**
+     * Coalescing window in seconds. 0 (or a negative value) disables
+     * throttling so every occurrence is written — the pre-1.5.5 behaviour.
+     */
+    private function throttleWindow(): int
+    {
+        $raw = $this->scopeConfig->getValue('panth_errormonitor/php_capture/throttle_window_seconds');
+        if ($raw === null || $raw === '') {
+            return self::DEFAULT_THROTTLE_WINDOW;
+        }
+        return max(0, (int)$raw);
     }
 
     private function normalizeSeverity(string $severity): string

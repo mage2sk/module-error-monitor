@@ -3,6 +3,20 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.5] - 2026-06-04
+
+### Improved
+- **Repeat PHP errors are now coalesced before they reach the database.** A
+  single high-frequency exception (one thrown on every request, or in a loop)
+  previously produced one row UPDATE plus one row INSERT for every occurrence.
+  At scale that is a large, sustained volume of row writes — costly for the
+  database and, on servers with row-based binary logging enabled, for the
+  binary log it has to retain. Occurrences of the same error are now counted in
+  cache and written at most once per configurable window (`PHP Error Capture →
+  Coalesce Window`, default 60s); the suppressed hits are folded into the
+  group's total so `occurrence_count` stays accurate. New installs get this
+  automatically; set the window to `0` to restore per-occurrence writes.
+
 ## [1.5.4] - 2026-06-01
 
 ### Fixed

@@ -26,6 +26,7 @@ Non-Error promise rejection captured</ignore_patterns>
             <php_capture>
                 <enabled>1</enabled>
                 <min_severity>error</min_severity>
+                <throttle_window_seconds>60</throttle_window_seconds>
             </php_capture>
             <js_capture>
                 <enabled>1</enabled>
