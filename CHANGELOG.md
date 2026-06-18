@@ -3,6 +3,13 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.6] - 2026-06-18
+
+### Changed
+- README rewritten to match the Panth extension documentation standard: full
+  configuration table sourced from system.xml, Quick Answer block, FAQ section,
+  structured Quick Links table, and SEO meta comment.
+
 ## [1.5.5] - 2026-06-04
 
 ### Improved
