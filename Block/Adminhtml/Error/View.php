@@ -1,10 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Backing block for the error detail page: exposes the group aggregate and
- * its most recent occurrences. All output is escaped in the template.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Block\Adminhtml\Error;
@@ -22,7 +16,7 @@ class View extends Template
 {
     public const EVENTS_PER_PAGE = 50;
     private const DISTINCT_URL_LIMIT = 50;
-    /** Cap displayed pages so a 10k-event group can't blow up the render. */
+
     private const MAX_PAGES = 200;
 
     private ?ErrorGroup $group = null;
@@ -52,9 +46,6 @@ class View extends Template
         return $this->group;
     }
 
-    /**
-     * @return DataObject[]
-     */
     public function getRecentEvents(): array
     {
         $group = $this->getGroup();
@@ -108,12 +99,6 @@ class View extends Template
         return $pages > self::MAX_PAGES ? self::MAX_PAGES : $pages;
     }
 
-    /**
-     * Build a compact 1 … (cur-2 cur-1 cur cur+1 cur+2) … last window so
-     * groups with hundreds of pages stay one line wide.
-     *
-     * @return array<int, array{page:int, url:string, current:bool, label:string}>
-     */
     public function getPaginationLinks(): array
     {
         $cur = $this->getCurrentPage();
@@ -167,14 +152,6 @@ class View extends Template
         );
     }
 
-    /**
-     * Every distinct URL where this error has been recorded, with the number
-     * of occurrences per URL, ordered by frequency descending. Capped to the
-     * top DISTINCT_URL_LIMIT so a pathological event count can't blow up the
-     * admin page render.
-     *
-     * @return array<int, array{url:string, occurrences:int}>
-     */
     public function getDistinctUrls(): array
     {
         $group = $this->getGroup();
@@ -222,9 +199,6 @@ class View extends Template
         };
     }
 
-    /**
-     * Pretty-print the stored JSON context.
-     */
     public function formatContext(?string $context): string
     {
         if ($context === null || $context === '') {

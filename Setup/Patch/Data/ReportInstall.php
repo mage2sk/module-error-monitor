@@ -1,9 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Pings the install endpoint once per module version via InstallReporter.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Setup\Patch\Data;
@@ -33,7 +28,6 @@ class ReportInstall implements DataPatchInterface
         try {
             $this->installReporter->reportInstall();
         } catch (\Throwable) {
-            // never block setup:upgrade
         }
         return $this;
     }

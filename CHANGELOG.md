@@ -3,6 +3,11 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.7] - 2026-07-07
+
+### Changed
+- Code cleanup: removed redundant inline comments and docblocks from the PHP source. No functional changes.
+
 ## [1.5.6] - 2026-06-18
 
 ### Changed

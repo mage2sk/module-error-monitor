@@ -1,13 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Clears the explicit pause flag set by panth:errormonitor:pause. Does NOT
- * affect Magento's MaintenanceMode — that suspension lifts on its own when
- * `bin/magento maintenance:disable` runs.
- *
- *   bin/magento panth:errormonitor:resume
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Console\Command;

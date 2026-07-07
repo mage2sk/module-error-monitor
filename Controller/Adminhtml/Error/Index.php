@@ -1,7 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Controller\Adminhtml\Error;
@@ -25,7 +22,6 @@ class Index extends Action implements HttpGetActionInterface
 
     public function execute(): Page
     {
-        /** @var Page $resultPage */
         $resultPage = $this->resultPageFactory->create();
         $resultPage->setActiveMenu('Panth_ErrorMonitor::error_log');
         $resultPage->getConfig()->getTitle()->prepend(__('Error Log'));

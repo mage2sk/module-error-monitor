@@ -1,7 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Model\Config\Source;
@@ -10,10 +7,6 @@ use Magento\Framework\Data\OptionSourceInterface;
 
 class Severity implements OptionSourceInterface
 {
-    /**
-     * Severity name => numeric rank (PSR-3 / Monolog ordering).
-     * Higher rank = more severe. Used for threshold comparisons.
-     */
     public const RANKS = [
         'debug'     => 1,
         'info'      => 2,
@@ -25,9 +18,6 @@ class Severity implements OptionSourceInterface
         'emergency' => 8,
     ];
 
-    /**
-     * @return array<int, array{value: string, label: string}>
-     */
     public function toOptionArray(): array
     {
         return [
@@ -40,9 +30,6 @@ class Severity implements OptionSourceInterface
         ];
     }
 
-    /**
-     * Numeric rank for a severity name (0 if unknown).
-     */
     public static function rank(string $severity): int
     {
         return self::RANKS[strtolower($severity)] ?? 0;

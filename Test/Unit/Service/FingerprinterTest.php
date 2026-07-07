@@ -1,7 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Test\Unit\Service;
@@ -27,7 +24,6 @@ class FingerprinterTest extends TestCase
 
     public function testUuidsCollapse(): void
     {
-        // Same outer wording, two completely different UUIDs — must group.
         $a = $this->fingerprinter->fingerprint('php', 'X', 'Token for 550e8400-e29b-41d4-a716-446655440000 has expired');
         $b = $this->fingerprinter->fingerprint('php', 'X', 'Token for 11111111-2222-3333-4444-555555555555 has expired');
         $this->assertSame($a, $b);
@@ -35,7 +31,6 @@ class FingerprinterTest extends TestCase
 
     public function testFreeTextQuotedValuesCollapse(): void
     {
-        // Quoted free-text spans (not identifier-shaped) must collapse.
         $a = $this->fingerprinter->fingerprint('php', 'X', 'Customer said "I want a full refund please"');
         $b = $this->fingerprinter->fingerprint('php', 'X', 'Customer said "Where is my order it is late"');
         $this->assertSame($a, $b, 'Free-text quoted strings must collapse to <v>');
@@ -43,9 +38,6 @@ class FingerprinterTest extends TestCase
 
     public function testIdentifierShapedQuotedTokensPreserved(): void
     {
-        // Different identifier-shaped tokens (module / table / config-path)
-        // MUST produce different fingerprints — they are the discriminating
-        // signal that tells one incident from another.
         $a = $this->fingerprinter->fingerprint('php', 'X', "Module 'Vendor_ModuleA' is not enabled");
         $b = $this->fingerprinter->fingerprint('php', 'X', "Module 'Vendor_ModuleB' is not enabled");
         $this->assertNotSame($a, $b, 'Identifier-shaped quoted tokens must NOT false-collapse');
@@ -57,8 +49,6 @@ class FingerprinterTest extends TestCase
 
     public function testEsCausedByDiscriminates(): void
     {
-        // Different Elasticsearch caused_by types must NOT share a fingerprint,
-        // even though the outer wording + JSON shape are identical.
         $a = $this->fingerprinter->fingerprint('php', 'EsException',
             'search failed: {"error":{"root_cause":[{"type":"mapper_parsing_exception"}]}}');
         $b = $this->fingerprinter->fingerprint('php', 'EsException',
@@ -68,8 +58,6 @@ class FingerprinterTest extends TestCase
 
     public function testIpv6CompressionHandled(): void
     {
-        // Different IPv6 addresses (one with ::, one with different ::) must
-        // collapse to the same fingerprint when the surrounding error matches.
         $a = $this->fingerprinter->fingerprint('php', 'RuntimeException',
             'upstream connect failed at 2001:db8:85a3::8a2e:370:7334');
         $b = $this->fingerprinter->fingerprint('php', 'RuntimeException',
@@ -79,8 +67,6 @@ class FingerprinterTest extends TestCase
 
     public function testIpv4InUrlScheme(): void
     {
-        // Connection-refused errors against different IPs (in tcp:// URLs)
-        // must collapse — `://1.2.3.4` previously didn't match.
         $a = $this->fingerprinter->fingerprint('php', 'PDOException',
             'Connection refused at tcp://192.168.1.10:3306');
         $b = $this->fingerprinter->fingerprint('php', 'PDOException',
@@ -90,8 +76,6 @@ class FingerprinterTest extends TestCase
 
     public function testStaticAssetCacheBusterStripped(): void
     {
-        // Same JS error from two deploys (different version<ts> path segment)
-        // must share a fingerprint via normalizeFile().
         $a = $this->fingerprinter->fingerprint('js', 'TypeError', "Cannot read 'qty'",
             'https://site.test/static/version1730000000/frontend/Magento/luma/en_US/mage/menu.js', 10);
         $b = $this->fingerprinter->fingerprint('js', 'TypeError', "Cannot read 'qty'",
@@ -101,16 +85,15 @@ class FingerprinterTest extends TestCase
 
     public function testExtractTypeMinesExceptionClass(): void
     {
-        // The canonical PHP wrapper.
         $this->assertSame(
             'Magento\\Framework\\Exception\\NoSuchEntityException',
             $this->fingerprinter->extractType(
                 "exception 'Magento\\Framework\\Exception\\NoSuchEntityException' with message 'X' in /path:42"
             )
         );
-        // Native JS error class.
+
         $this->assertSame('TypeError', $this->fingerprinter->extractType("TypeError: Cannot read 'x' of undefined"));
-        // No match -> null.
+
         $this->assertNull($this->fingerprinter->extractType('a random log line with no class info'));
     }
 
@@ -137,7 +120,6 @@ class FingerprinterTest extends TestCase
 
     public function testJsBasenameCollapsesAcrossPaths(): void
     {
-        // Same JS file (app.js) served from different theme paths must group.
         $a = $this->fingerprinter->fingerprint('js', 'Error', 'boom',
             'https://site.test/static/version1/frontend/Magento/luma/en_US/mage/app.js', 5);
         $b = $this->fingerprinter->fingerprint('js', 'Error', 'boom',
@@ -147,9 +129,6 @@ class FingerprinterTest extends TestCase
 
     public function testFrameworkGenericJsIgnoresFile(): void
     {
-        // "Cannot set properties of null (setting 'innerHTML')" appears in
-        // dozens of unrelated scripts but is one defect family. Capture it as
-        // ONE group regardless of which .js file fired it.
         $a = $this->fingerprinter->fingerprint('js', 'TypeError',
             "Cannot set properties of null (setting 'innerHTML')",
             'https://site.test/static/version1/frontend/X/Y/en_US/widget-a.js', 10);
@@ -184,8 +163,6 @@ class FingerprinterTest extends TestCase
 
     public function testPhpFileStillFullPath(): void
     {
-        // PHP fingerprinting still uses the full normalised file — the file
-        // path IS a useful triage signal for server-side errors.
         $a = $this->fingerprinter->fingerprint('php', 'TypeError', 'boom',
             '/var/www/vhosts/site/vendor/foo/Helper/A.php', 10);
         $b = $this->fingerprinter->fingerprint('php', 'TypeError', 'boom',

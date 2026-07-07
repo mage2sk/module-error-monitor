@@ -1,27 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Public storefront endpoint that receives JS error beacons.
- *
- * CSRF is INTENTIONALLY bypassed (CsrfAwareActionInterface returns true) for
- * the same reason as other beacon endpoints in this suite: the page that
- * fires the beacon is usually served from Full Page Cache and has no fresh
- * form key, and minting one would defeat the cache. The endpoint is hardened
- * with several independent layers so the bypass is safe:
- *
- *   1. POST-only (HttpPostActionInterface).
- *   2. Same-origin enforcement — the Origin/Referer host MUST match a known
- *      store base URL host, or the request is dropped.
- *   3. Body size cap BEFORE json_decode (rejects oversized payloads).
- *   4. Per-IP + global rate limiting (RateLimiter).
- *   5. Strict field validation, length caps, control-char stripping.
- *   6. Ignore-list + dedupe in the recorder collapse noise into one row.
- *   7. The endpoint writes ONLY to the error tables — no session, customer,
- *      order or auth state is read or written.
- *   8. It NEVER echoes any input back (always 204), so it cannot be used for
- *      reflected XSS.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Controller\Js;
@@ -48,7 +25,6 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
     private const MAX_SOURCE = 1024;
     private const MAX_STACK = 8000;
 
-    /** @var string[]|null Lazily-built allowlist of store hostnames. */
     private ?array $allowedHosts = null;
 
     public function __construct(
@@ -76,8 +52,7 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
             if (!$this->config->isJsCaptureEnabled($storeId)) {
                 return $result;
             }
-            // Pause-during-deploy: bot/visitor beacons while the site is being
-            // deployed are noise, not real bugs.
+
             if ($this->deploymentGuard->isCaptureSuspended()) {
                 return $result;
             }
@@ -130,16 +105,12 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
                 storeId: $storeId
             ));
         } catch (\Throwable $e) {
-            // Always answer 204; never surface internals.
             return $result;
         }
 
         return $result;
     }
 
-    /**
-     * Origin (preferred) or Referer host must match a known store host.
-     */
     private function isSameOrigin(): bool
     {
         $candidate = $this->hostFromUrl($this->serverValue('HTTP_ORIGIN'))
@@ -150,9 +121,6 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
         return in_array($candidate, $this->getAllowedHosts(), true);
     }
 
-    /**
-     * @return string[]
-     */
     private function getAllowedHosts(): array
     {
         if ($this->allowedHosts !== null) {
@@ -208,9 +176,6 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
 
     public function validateForCsrf(RequestInterface $request): ?bool
     {
-        // See class docblock — bypass is compensated by same-origin checks,
-        // rate limiting, strict validation, and a write surface limited to
-        // the error tables.
         return true;
     }
 }

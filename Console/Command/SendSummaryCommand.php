@@ -1,11 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Sends the error summary email immediately, bypassing the daily send-hour and
- * once-per-day flag — for verifying email configuration on demand:
- *   bin/magento panth:errormonitor:send-summary
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Console\Command;
@@ -42,13 +35,9 @@ class SendSummaryCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // A Symfony console command has no area context; EmailNotifier emulates
-        // the frontend store internally, but Magento\Store\Model\App\Emulation
-        // requires an area to already be set on App\State. Set it once here.
         try {
             $this->appState->setAreaCode(Area::AREA_GLOBAL);
         } catch (\Throwable $e) {
-            // already set by another command bootstrap — fine.
         }
 
         if (!$this->config->isEmailEnabled()) {
@@ -85,9 +74,6 @@ class SendSummaryCommand extends Command
         return Command::FAILURE;
     }
 
-    /**
-     * @return string[]
-     */
     private function severitiesAtOrAbove(string $minSeverity): array
     {
         $min = Severity::rank($minSeverity);

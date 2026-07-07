@@ -1,7 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Model\Config\Source;
@@ -11,9 +8,6 @@ use Panth\ErrorMonitor\Model\ErrorGroup;
 
 class Status implements OptionSourceInterface
 {
-    /**
-     * @return array<int, array{value: int, label: \Magento\Framework\Phrase}>
-     */
     public function toOptionArray(): array
     {
         return [

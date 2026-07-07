@@ -1,16 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * The ONLY thing that ever sends mail. Errors are captured instantly; this
- * cron decides when to email and never floods the inbox.
- *
- * As of 1.5.0 the cadence is fixed: at most ONE email per day. The cron runs
- * hourly so the admin can change send_hour without re-scheduling, but actual
- * delivery is double-gated by send_hour AND a per-day Flag so a second send
- * cannot happen on the same UTC day. Repeated errors collapse into one group
- * via the fingerprint, so each distinct error appears once in the summary.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Cron;
@@ -51,22 +39,17 @@ class DispatchNotifications
         }
     }
 
-    /**
-     * One email per day, after the configured send-hour, guarded by a per-day Flag.
-     */
     private function runDailySummary(): void
     {
         if ((int)gmdate('G') < $this->config->getEmailSendHour()) {
-            return; // too early in the day
+            return;
         }
         $today = gmdate('Y-m-d');
         $flagCode = self::SUMMARY_FLAG_PREFIX . $today;
         if ($this->flagManager->getFlagData($flagCode)) {
-            return; // already sent today
+            return;
         }
 
-        // Error groups that actually occurred in the last 24h (so old, dormant
-        // errors are not re-reported), excluding ignored ones.
         $since = gmdate('Y-m-d H:i:s', time() - 86400);
         $collection = $this->collectionFactory->create();
         $collection->addFieldToFilter('status', ErrorGroup::STATUS_NEW)
@@ -79,8 +62,6 @@ class DispatchNotifications
 
         $groups = array_values($collection->getItems());
         if ($groups === []) {
-            // Nothing happened today — mark sent so we don't re-query hourly,
-            // and skip sending an empty "all healthy" email.
             $this->flagManager->saveFlag($flagCode, 1);
             return;
         }
@@ -91,18 +72,11 @@ class DispatchNotifications
         }
     }
 
-    /**
-     * @param \Magento\Framework\DataObject[] $groups
-     * @return int[]
-     */
     private function ids(array $groups): array
     {
         return array_values(array_filter(array_map(static fn ($g) => (int)$g->getData('group_id'), $groups)));
     }
 
-    /**
-     * @param int[] $groupIds
-     */
     private function markEmailed(array $groupIds, string $today): void
     {
         if ($groupIds === []) {
@@ -119,9 +93,6 @@ class DispatchNotifications
         );
     }
 
-    /**
-     * @return string[]
-     */
     private function severitiesAtOrAbove(string $minSeverity): array
     {
         $min = Severity::rank($minSeverity);

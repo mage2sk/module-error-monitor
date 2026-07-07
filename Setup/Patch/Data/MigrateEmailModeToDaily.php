@@ -1,18 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * One-shot data patch. The "immediate digest" email mode was removed in
- * 1.5.0 because in production it still emitted one email per hour during
- * sustained incidents, which the module exists to prevent. This patch
- * rewrites any existing core_config_data row that selected the deprecated
- * value to the only remaining mode (daily_summary) on every configured
- * scope so the admin does not have to touch the panel after the upgrade.
- *
- * Idempotent: Magento's patch system records that this patch ran; re-running
- * setup:upgrade is a no-op. Failures are swallowed so a stale config row
- * cannot block the upgrade.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Setup\Patch\Data;

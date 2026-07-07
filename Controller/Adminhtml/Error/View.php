@@ -1,7 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Controller\Adminhtml\Error;
@@ -31,7 +28,7 @@ class View extends Action implements HttpGetActionInterface
     public function execute(): ResultInterface
     {
         $id = (int)$this->getRequest()->getParam('group_id');
-        /** @var ErrorGroup $group */
+
         $group = $this->groupFactory->create();
         if ($id) {
             $this->groupResource->load($group, $id);

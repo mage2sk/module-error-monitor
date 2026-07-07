@@ -1,15 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Suspends error capture for a bounded window — for use as the first step of
- * a deploy script when MaintenanceMode is not being used:
- *
- *   bin/magento panth:errormonitor:pause --minutes=60
- *
- * The pause auto-expires; if you forget to resume, capture comes back on by
- * itself.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Console\Command;

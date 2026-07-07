@@ -1,7 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Controller\Adminhtml\Error;
@@ -16,7 +13,7 @@ class MassDelete extends AbstractMassAction
         if ($ids === []) {
             return 0;
         }
-        // Events cascade via the FK constraint.
+
         return (int)$this->groupResource->getConnection()->delete(
             $this->groupResource->getMainTable(),
             ['group_id IN (?)' => $ids]

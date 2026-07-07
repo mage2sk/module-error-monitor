@@ -1,10 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Typed configuration reader for Panth Error Monitor. Extends the shared
- * Panth_Core AbstractConfig so behaviour stays consistent across the suite.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Helper;
@@ -15,23 +9,15 @@ class Config extends AbstractConfig
 {
     private const XML_PATH = 'panth_errormonitor';
 
-    /**
-     * @inheritDoc
-     */
     protected function getConfigValue(string $group, string $field, $storeId = null)
     {
         return $this->getConfig(self::XML_PATH . '/' . $group . '/' . $field, $storeId);
     }
 
-    /**
-     * Master switch.
-     */
     public function isEnabled($storeId = null): bool
     {
         return $this->isSetFlag(self::XML_PATH . '/general/enabled', $storeId);
     }
-
-    /* ----------------------------------------------------------------- PHP */
 
     public function isPhpCaptureEnabled($storeId = null): bool
     {
@@ -44,10 +30,6 @@ class Config extends AbstractConfig
         return (string)($this->getConfigValue('php_capture', 'min_severity', $storeId) ?: 'error');
     }
 
-    /**
-     * Window (seconds) over which repeat occurrences of the same error are
-     * coalesced into a single database write. 0 disables coalescing.
-     */
     public function getPhpThrottleWindowSeconds($storeId = null): int
     {
         $raw = $this->getConfigValue('php_capture', 'throttle_window_seconds', $storeId);
@@ -56,8 +38,6 @@ class Config extends AbstractConfig
         }
         return max(0, (int)$raw);
     }
-
-    /* ------------------------------------------------------------------ JS */
 
     public function isJsCaptureEnabled($storeId = null): bool
     {
@@ -87,16 +67,6 @@ class Config extends AbstractConfig
         return $kb * 1024;
     }
 
-    /**
-     * Lower-cased ignore substrings, applied at capture time across the
-     * error's message, file path, error class FQN and stack trace.
-     *
-     * Reads the canonical location (general/ignore_patterns) and falls back
-     * to the legacy location (js_capture/ignore_patterns) so customers that
-     * upgrade before MigrateIgnorePatternsToGeneral runs keep their list.
-     *
-     * @return string[]
-     */
     public function getIgnorePatterns($storeId = null): array
     {
         $raw = (string)$this->getConfigValue('general', 'ignore_patterns', $storeId);
@@ -117,8 +87,6 @@ class Config extends AbstractConfig
         return $out;
     }
 
-    /* --------------------------------------------------------------- Email */
-
     public function isEmailEnabled($storeId = null): bool
     {
         return $this->isEnabled($storeId)
@@ -130,9 +98,6 @@ class Config extends AbstractConfig
         return (string)($this->getConfigValue('email', 'mode', $storeId) ?: 'daily_summary');
     }
 
-    /**
-     * Hour of day (0-23, UTC) at which the daily summary is sent.
-     */
     public function getEmailSendHour($storeId = null): int
     {
         $hour = (int)$this->getConfigValue('email', 'send_hour', $storeId);
@@ -142,9 +107,6 @@ class Config extends AbstractConfig
         return $hour > 23 ? 23 : $hour;
     }
 
-    /**
-     * @return string[] Validated recipient addresses.
-     */
     public function getEmailRecipients($storeId = null): array
     {
         $raw = (string)$this->getConfigValue('email', 'recipients', $storeId);
@@ -178,8 +140,6 @@ class Config extends AbstractConfig
         return $max > 0 ? $max : 20;
     }
 
-    /* ------------------------------------------------------------- Privacy */
-
     public function shouldStoreIp($storeId = null): bool
     {
         return $this->isSetFlag(self::XML_PATH . '/privacy/store_ip', $storeId);
@@ -189,8 +149,6 @@ class Config extends AbstractConfig
     {
         return $this->isSetFlag(self::XML_PATH . '/privacy/anonymize_ip', $storeId);
     }
-
-    /* ----------------------------------------------------------- Retention */
 
     public function getEventRetentionDays($storeId = null): int
     {

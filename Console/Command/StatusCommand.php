@@ -1,14 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * `bin/magento panth:errormonitor:status` — single-glance answer to
- * "why isn't capture working?". Prints every gate that decides whether an
- * error gets recorded, the deploy-detect baseline + last-seen mtimes, the
- * configured ignore-pattern count, and a tally of events actually recorded
- * in the last hour and 24 hours. The goal is that anyone reading the
- * output can pinpoint the off-switch in under 30 seconds.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Console\Command;
@@ -51,7 +41,6 @@ class StatusCommand extends Command
         try {
             $this->appState->setAreaCode(Area::AREA_GLOBAL);
         } catch (\Throwable $e) {
-            // already set — fine
         }
 
         if ($input->getOption('reset-auto-detect')) {

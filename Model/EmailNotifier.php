@@ -1,15 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Sends the error alert email. The HTML body (the per-error cards) is rendered
- * by Block\Email\Summary via the {{block}} directive in the template, so it is
- * emitted as trusted, un-escaped markup. This class only computes the subject
- * and passes scalar template vars — notably the selected group ids as a CSV.
- *
- * Rendered in the FRONTEND area with a real store view so the shared
- * design/email header & footer templates resolve (they cannot in adminhtml).
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Model;
@@ -36,11 +25,6 @@ class EmailNotifier
     ) {
     }
 
-    /**
-     * Send one email covering the supplied error groups.
-     *
-     * @param DataObject[] $groups
-     */
     public function send(array $groups): bool
     {
         $recipients = $this->config->getEmailRecipients();
@@ -68,9 +52,7 @@ class EmailNotifier
         );
 
         $storeId = $this->resolveStoreId();
-        // Emulate the frontend store so getTransport() / sendMessage() work
-        // identically from CLI, cron and web — a console command otherwise has
-        // no area context and the transport fails to resolve.
+
         $this->emulation->startEnvironmentEmulation($storeId, Area::AREA_FRONTEND, true);
         try {
             $this->transportBuilder
@@ -101,9 +83,6 @@ class EmailNotifier
         }
     }
 
-    /**
-     * A real (frontend) store view id so email header/footer templates resolve.
-     */
     private function resolveStoreId(): int
     {
         try {
@@ -115,7 +94,6 @@ class EmailNotifier
                 return (int)$s->getId();
             }
         } catch (\Throwable $e) {
-            // fall through
         }
         return (int)Store::DEFAULT_STORE_ID;
     }

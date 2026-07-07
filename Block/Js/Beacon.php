@@ -1,11 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Storefront block that renders the JS error collector. Emits nothing at all
- * when capture is disabled, so there is zero footprint on stores that don't
- * use it.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Block\Js;
@@ -43,9 +36,6 @@ class Beacon extends Template
         return $this->config->getJsSampleRate((int)$this->_storeManager->getStore()->getId());
     }
 
-    /**
-     * CSP-safe config payload, emitted as inert JSON (never executed).
-     */
     public function getConfigJson(): string
     {
         return (string)json_encode([

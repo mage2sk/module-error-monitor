@@ -1,7 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Model;
@@ -18,9 +15,6 @@ class ErrorGroup extends AbstractModel
     public const SOURCE_PHP = 'php';
     public const SOURCE_JS = 'js';
 
-    /**
-     * @var string
-     */
     protected $_eventPrefix = 'panth_error_group';
 
     protected function _construct(): void

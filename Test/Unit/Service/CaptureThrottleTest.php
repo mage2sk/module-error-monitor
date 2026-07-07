@@ -1,10 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Contract tests for the PHP-capture coalescing throttle. Uses an in-memory
- * fake of the Magento cache so no application bootstrap is required.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Test\Unit\Service;
@@ -15,7 +9,6 @@ use PHPUnit\Framework\TestCase;
 
 class CaptureThrottleTest extends TestCase
 {
-    /** @var array<string,string> */
     private array $store = [];
 
     private function makeThrottle(): CaptureThrottle
@@ -34,9 +27,8 @@ class CaptureThrottleTest extends TestCase
         $throttle = $this->makeThrottle();
         $fp = str_repeat('a', 64);
 
-        // First hit in the window is written...
         $this->assertSame(1, $throttle->register($fp, 60));
-        // ...every subsequent hit in the same window is absorbed.
+
         $this->assertSame(0, $throttle->register($fp, 60));
         $this->assertSame(0, $throttle->register($fp, 60));
     }
@@ -46,11 +38,10 @@ class CaptureThrottleTest extends TestCase
         $throttle = $this->makeThrottle();
         $fp = str_repeat('d', 64);
 
-        $throttle->register($fp, 60); // flush → pending reset to 0
-        $throttle->register($fp, 60); // coalesced → pending 1
-        $throttle->register($fp, 60); // coalesced → pending 2
+        $throttle->register($fp, 60);
+        $throttle->register($fp, 60);
+        $throttle->register($fp, 60);
 
-        // The carried count the next window's first write will fold in.
         $this->assertSame('2', $this->store['panth_em_thr_p_' . $fp]);
     }
 
@@ -70,7 +61,6 @@ class CaptureThrottleTest extends TestCase
         $cache->method('load')->willThrowException(new \RuntimeException('cache unavailable'));
         $throttle = new CaptureThrottle($cache);
 
-        // A cache outage must never drop the error — record it.
         $this->assertSame(1, $throttle->register(str_repeat('c', 64), 60));
     }
 }

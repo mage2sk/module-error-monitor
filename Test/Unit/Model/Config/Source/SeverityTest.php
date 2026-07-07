@@ -1,7 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Test\Unit\Model\Config\Source;
@@ -30,7 +27,6 @@ class SeverityTest extends TestCase
 
     public function testThresholdComparison(): void
     {
-        // An "error" should pass a "min = warning" gate but fail "min = critical".
         $this->assertGreaterThanOrEqual(Severity::rank('warning'), Severity::rank('error'));
         $this->assertLessThan(Severity::rank('critical'), Severity::rank('error'));
     }

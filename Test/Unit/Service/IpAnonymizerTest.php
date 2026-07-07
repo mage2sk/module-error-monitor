@@ -1,7 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Test\Unit\Service;
@@ -13,7 +10,6 @@ use PHPUnit\Framework\TestCase;
 
 class IpAnonymizerTest extends TestCase
 {
-    /** @var Config&MockObject */
     private $config;
 
     private IpAnonymizer $anonymizer;

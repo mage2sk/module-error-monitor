@@ -1,16 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Renders the error cards inside the alert email. Used via the {{block}}
- * directive in view/frontend/email/error_alert.html so its output is treated
- * as trusted HTML (NOT escaped) — the previous approach of passing pre-built
- * HTML through {{var}} was double-escaped by the email filter and showed up
- * as literal markup in the inbox.
- *
- * The cron passes the selected group ids as a scalar CSV ("12,15,18"); this
- * block loads those rows and the template escapes every dynamic field.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Block\Email;
@@ -31,11 +19,6 @@ class Summary extends Template
         parent::__construct($context, $data);
     }
 
-    /**
-     * Error groups to render, loaded from the CSV id list set by the cron.
-     *
-     * @return \Magento\Framework\DataObject[]
-     */
     public function getErrorGroups(): array
     {
         $raw = (string)$this->getData('group_ids');

@@ -1,14 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Re-fingerprints every existing error group using the current normaliser and
- * type extractor, then merges any rows that now share a fingerprint. Auto-runs
- * once on setup:upgrade via the data patch; this command lets an admin run it
- * on demand (e.g. after manual data edits, or with --dry-run to preview).
- *
- *   bin/magento panth:errormonitor:regroup [--dry-run]
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Console\Command;

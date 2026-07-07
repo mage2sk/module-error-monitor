@@ -1,10 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * CLI wrapper around the retention cron, for on-demand pruning:
- *   bin/magento panth:errormonitor:cleanup
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Console\Command;

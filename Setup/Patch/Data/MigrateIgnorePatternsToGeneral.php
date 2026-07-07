@@ -1,20 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * One-shot data patch. In 1.5.0 the ignore-patterns config moved from
- * panth_errormonitor/js_capture/ignore_patterns to
- * panth_errormonitor/general/ignore_patterns — and its match scope
- * widened from "message only" to "message + file path + error class +
- * stack trace". This patch copies any existing customer-defined value
- * into the new path on every configured scope so the upgrade is
- * transparent.
- *
- * Idempotent — Magento's patch system records that this patch ran; the
- * runtime reader also falls back to the legacy path until the patch
- * lands, so an admin that captures errors before setup:upgrade still
- * gets their filters applied.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Setup\Patch\Data;
@@ -63,8 +47,7 @@ class MigrateIgnorePatternsToGeneral implements DataPatchInterface
                 }
                 $scope = (string)$row['scope'];
                 $scopeId = (int)$row['scope_id'];
-                // Don't clobber a value the admin may have already set on the
-                // new path between deploy and patch run.
+
                 $existing = $conn->fetchOne(
                     $conn->select()
                         ->from($table, 'value')

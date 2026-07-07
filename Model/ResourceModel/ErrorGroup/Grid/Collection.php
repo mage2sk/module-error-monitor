@@ -1,11 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * UI grid data source for the admin error listing. Follows the standard
- * SearchResult pattern (matching mainTable + resourceModel are wired in
- * etc/di.xml and registered with the UiComponent CollectionFactory).
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup\Grid;
@@ -22,14 +15,8 @@ use Psr\Log\LoggerInterface;
 
 class Collection extends SearchResult implements SearchResultInterface
 {
-    /**
-     * @var string
-     */
     protected $_idFieldName = 'group_id';
 
-    /**
-     * @var AggregationInterface|null
-     */
     protected $aggregations;
 
     public function __construct(

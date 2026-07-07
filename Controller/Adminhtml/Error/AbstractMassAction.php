@@ -1,10 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Shared base for grid mass actions (resolve / ignore / delete). Honours the
- * grid's select-all / exclude filters via Magento\Ui\Component\MassAction\Filter.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Controller\Adminhtml\Error;
@@ -30,16 +24,12 @@ abstract class AbstractMassAction extends Action
         parent::__construct($context);
     }
 
-    /**
-     * @return int Number of affected groups.
-     */
     abstract protected function operate(Collection $collection): int;
 
     public function execute(): ResultInterface
     {
         $resultRedirect = $this->resultRedirectFactory->create();
         try {
-            /** @var Collection $collection */
             $collection = $this->filter->getCollection($this->collectionFactory->create());
             $count = $this->operate($collection);
             $this->messageManager->addSuccessMessage(
@@ -51,9 +41,6 @@ abstract class AbstractMassAction extends Action
         return $resultRedirect->setPath('*/*/index');
     }
 
-    /**
-     * @return int[]
-     */
     protected function ids(Collection $collection): array
     {
         return array_map('intval', $collection->getAllIds());

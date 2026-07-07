@@ -1,11 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Daily heartbeat. No-op when Panth_Core is enabled, since Core sends a
- * single heartbeat for the whole suite and we don't want every sibling
- * module's cron stampeding the receiver.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Cron;

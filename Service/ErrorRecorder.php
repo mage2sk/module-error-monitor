@@ -1,20 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * The "smart" core. Turns an ErrorPayload into:
- *   1. an atomic UPSERT into panth_error_group keyed on the fingerprint —
- *      so repeat occurrences increment a counter instead of inserting rows;
- *   2. one detail row in panth_error_event linked to that group.
- *
- * HARD GUARANTEES (this runs inside the system log handler, so it must never
- * make things worse):
- *   - Re-entrancy guard: if persisting an error itself triggers a logged
- *     error (e.g. a DB deadlock), we do NOT recurse.
- *   - Every public path is wrapped so a failure is swallowed — capturing an
- *     error must never throw a new one.
- *   - All string fields are length-capped to their column size.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Service;
@@ -27,28 +11,12 @@ use Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup as ErrorGroupResource;
 
 class ErrorRecorder
 {
-    /** Marker prefix on our own warnings so the handler can skip them. */
     public const INTERNAL_MARKER = '[PanthErrorMonitor]';
 
-    /**
-     * Operational-alert convention used family-wide by sibling security /
-     * firewall modules in this ecosystem: a single-bracket vendor-module tag
-     * followed by an action verb. These are events the operator took action
-     * on, not defects, and they bury the real-bug signal in the grid.
-     * Match scope intentionally does NOT name any specific module so the
-     * open-source code stays generic (per public-docs-generic memory).
-     *
-     * Examples it suppresses (when general/filter_ecosystem_alerts is on):
-     *   [PanthMalwareScanner] BLOCKED frontend dispatch: ...
-     *   [PanthFirewall] REJECTED request from ip ...
-     *   [PanthBotShield] DENIED user-agent ...
-     */
     private const ECOSYSTEM_ALERT_PATTERN = '/^\[Panth[A-Z][A-Za-z0-9_]{0,40}\]\s+(?:BLOCKED|REJECTED|DENIED|REFUSED|DROPPED|QUARANTINED)\b/';
 
-    /** Re-entrancy flag shared across all instances. */
     private static bool $recording = false;
 
-    /** Default coalescing window when none is configured (seconds). */
     private const DEFAULT_THROTTLE_WINDOW = 60;
 
     public function __construct(
@@ -60,9 +28,6 @@ class ErrorRecorder
     ) {
     }
 
-    /**
-     * Persist one occurrence. Returns the group id, or null if skipped/failed.
-     */
     public function record(ErrorPayload $payload): ?int
     {
         if (self::$recording) {
@@ -82,12 +47,6 @@ class ErrorRecorder
                 $payload->line
             );
 
-            // Coalesce repeat occurrences of the same error within a short
-            // window. A non-positive return means this occurrence was absorbed
-            // into the cache counter — we touch neither table, which keeps a
-            // hot/looping error from flooding the DB (and the row-based binary
-            // log) with one UPDATE + one INSERT per hit. The positive value is
-            // the number of occurrences to fold into occurrence_count now.
             $increment = $this->throttle->register($fingerprint, $this->throttleWindow());
             if ($increment <= 0) {
                 return null;
@@ -99,27 +58,18 @@ class ErrorRecorder
             }
             return $groupId > 0 ? $groupId : null;
         } catch (\Throwable $e) {
-            // Never let error-capture break the request. No re-logging here —
-            // that would risk a loop even with the guard.
             return null;
         } finally {
             self::$recording = false;
         }
     }
 
-    /**
-     * Atomic INSERT ... ON DUPLICATE KEY UPDATE on the fingerprint unique key.
-     * The LAST_INSERT_ID(group_id) trick returns the group id on both insert
-     * and update so we always have it for the event row.
-     */
     private function upsertGroup(string $fingerprint, ErrorPayload $payload, int $increment): int
     {
         $conn = $this->groupResource->getConnection();
         $table = $this->groupResource->getMainTable();
         $now = gmdate('Y-m-d H:i:s');
-        // Number of occurrences this write accounts for (1 on the hot path,
-        // more when the throttle is flushing coalesced hits). A validated int,
-        // so it is safe to inline rather than bind.
+
         $increment = max(1, $increment);
 
         $sql = 'INSERT INTO ' . $conn->quoteIdentifier($table)
@@ -133,7 +83,7 @@ class ErrorRecorder
             . ' severity = VALUES(severity),'
             . ' message = VALUES(message),'
             . ' store_id = VALUES(store_id),'
-            // A resolved error that recurs is a regression — re-open it.
+
             . ' status = IF(status = ' . ErrorGroup::STATUS_RESOLVED
             . ', ' . ErrorGroup::STATUS_NEW . ', status),'
             . ' updated_at = VALUES(updated_at)';
@@ -180,20 +130,8 @@ class ErrorRecorder
         ]);
     }
 
-    /**
-     * Drop the error if (a) the ecosystem-alert auto-filter is on AND the
-     * message matches the family-wide BLOCKED/REJECTED pattern, OR (b) any
-     * configured substring appears in its message, file path, error class
-     * FQN or stack trace — case-insensitive. Reads the canonical config
-     * path (general/ignore_patterns) and falls back to the 1.4.x location
-     * (js_capture/ignore_patterns) so admins who upgrade before
-     * MigrateIgnorePatternsToGeneral runs keep their list.
-     */
     private function isIgnored(ErrorPayload $payload): bool
     {
-        // (a) Sibling-module operational alerts. Default-on; checked first
-        // because it's a single bounded-regex test and short-circuits the
-        // textarea scan for the common case.
         if ($this->scopeConfig->isSetFlag('panth_errormonitor/general/filter_ecosystem_alerts')
             && preg_match(self::ECOSYSTEM_ALERT_PATTERN, $payload->message) === 1) {
             return true;
@@ -221,10 +159,6 @@ class ErrorRecorder
         return false;
     }
 
-    /**
-     * Coalescing window in seconds. 0 (or a negative value) disables
-     * throttling so every occurrence is written — the pre-1.5.5 behaviour.
-     */
     private function throttleWindow(): int
     {
         $raw = $this->scopeConfig->getValue('panth_errormonitor/php_capture/throttle_window_seconds');
@@ -240,12 +174,8 @@ class ErrorRecorder
         return isset(Severity::RANKS[$severity]) ? $severity : 'error';
     }
 
-    /**
-     * Multibyte-safe, control-character-stripped truncation.
-     */
     private function cap(string $value, int $max): string
     {
-        // Strip control chars (keep tab/newline) so stored data stays printable.
         $value = (string)preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
         if (mb_strlen($value, 'UTF-8') <= $max) {
             return $value;

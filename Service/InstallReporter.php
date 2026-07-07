@@ -1,14 +1,4 @@
 <?php
-/**
- * Standalone install + heartbeat reporter for Panth_ErrorMonitor.
- *
- * Self-contained — no dependency on any sibling Panth_* class — so install
- * detection works even when sibling modules are disabled or absent. Mirrors
- * the shared pattern used across the suite: reportInstall() fires once per
- * version (deduped via Magento\Framework\Flag), reportHeartbeat() fires once
- * per UTC day. All failures are swallowed and logged; they MUST NOT block
- * setup:upgrade or cron.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Service;
@@ -108,9 +98,6 @@ class InstallReporter
         }
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     private function basePayload(): array
     {
         $store = $this->storeManager->getDefaultStoreView();
@@ -132,9 +119,6 @@ class InstallReporter
         ];
     }
 
-    /**
-     * @return list<array{composer_package:string, magento_module:string, version:string}>
-     */
     private function collectActivePanthModules(): array
     {
         $out = [];
@@ -179,9 +163,6 @@ class InstallReporter
         }
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
     private function post(string $url, array $payload): void
     {
         $body = json_encode($payload, JSON_UNESCAPED_SLASHES);

@@ -1,10 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Runs on every setup:upgrade. The InstallReporter dedupes per version via
- * Magento\Framework\Flag, so re-running is a silent no-op.
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Setup;

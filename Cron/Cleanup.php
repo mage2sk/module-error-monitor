@@ -1,12 +1,4 @@
 <?php
-/**
- * Copyright © Panth Infotech. All rights reserved.
- *
- * Retention enforcement so the tables can never grow without bound:
- *   - prune individual event rows older than the configured window;
- *   - delete resolved groups not seen for the configured window (their
- *     events cascade away via the FK).
- */
 declare(strict_types=1);
 
 namespace Panth\ErrorMonitor\Cron;
@@ -32,9 +24,6 @@ class Cleanup
         $this->run();
     }
 
-    /**
-     * @return array{events:int, groups:int}
-     */
     public function run(): array
     {
         $deletedEvents = 0;
