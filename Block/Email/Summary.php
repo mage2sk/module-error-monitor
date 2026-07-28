@@ -54,7 +54,7 @@ class Summary extends Template
     public function shorten(string $value, int $max): string
     {
         return mb_strlen($value, 'UTF-8') > $max
-            ? mb_substr($value, 0, $max, 'UTF-8') . '…'
+            ? mb_substr($value, 0, $max, 'UTF-8') . '...'
             : $value;
     }
 }

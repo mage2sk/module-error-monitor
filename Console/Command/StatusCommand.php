@@ -174,7 +174,7 @@ class StatusCommand extends Command
         if (mb_strlen($path) <= $max) {
             return $path;
         }
-        return '…' . mb_substr($path, -($max - 1));
+        return '...' . mb_substr($path, -($max - 1));
     }
 
     private function countSince(

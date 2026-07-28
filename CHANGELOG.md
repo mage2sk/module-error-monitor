@@ -3,6 +3,11 @@
 All notable changes to `mage2kishan/module-error-monitor` are documented here.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.8]
+
+### Changed
+- Replaced typographic characters (em dashes, curly quotes, ellipsis) with plain ASCII punctuation. No functional changes.
+
 ## [1.5.7] - 2026-07-07
 
 ### Changed
@@ -21,10 +26,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - **Repeat PHP errors are now coalesced before they reach the database.** A
   single high-frequency exception (one thrown on every request, or in a loop)
   previously produced one row UPDATE plus one row INSERT for every occurrence.
-  At scale that is a large, sustained volume of row writes — costly for the
+  At scale that is a large, sustained volume of row writes - costly for the
   database and, on servers with row-based binary logging enabled, for the
   binary log it has to retain. Occurrences of the same error are now counted in
-  cache and written at most once per configurable window (`PHP Error Capture →
+  cache and written at most once per configurable window (`PHP Error Capture ->
   Coalesce Window`, default 60s); the suppressed hits are folded into the
   group's total so `occurrence_count` stays accurate. New installs get this
   automatically; set the window to `0` to restore per-occurrence writes.
@@ -35,11 +40,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - **Post-deploy stale-cache JS noise is silenced out of the box.** When a
   user's browser holds a stale `requirejs-config.json` / webpack manifest
   after a deploy, every module load fails and surfaces as
-  `Uncaught Error: Script error for "X"` (one group per failed module —
+  `Uncaught Error: Script error for "X"` (one group per failed module -
   on a real production export 31 of 47 visible groups were this single
   family) or `ChunkLoadError: Loading chunk N failed after 3 retries`.
-  These cannot be acted on — they clear themselves as each visitor's
-  browser refreshes — so they belong in the default ignore set. Three new
+  These cannot be acted on - they clear themselves as each visitor's
+  browser refreshes - so they belong in the default ignore set. Three new
   default lines added to `general/ignore_patterns`:
     - `Script error for`
     - `ChunkLoadError`
@@ -55,22 +60,22 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 - **Auto-pause no longer silences capture forever.** 1.5.1's deploy
   auto-detect used a sliding "any watched mtime within the last N minutes"
-  window — on environments where `generated/code/` has its mtime
+  window - on environments where `generated/code/` has its mtime
   continuously refreshed (on-demand interceptor generation, cron-time
   plugin work, etc.) the window kept restarting and capture was silenced
   indefinitely. Rewritten as **delta detection**: a baseline of the last
   observed mtimes is stored in a Flag; capture is suspended only when a
   path's mtime is **strictly newer than what was recorded last time**, and
-  the pause runs until `(newest_change + window)` — which is then cached
+  the pause runs until `(newest_change + window)` - which is then cached
   in `panth_errormonitor_autopause_until` so subsequent checks don't have
   to re-evaluate. First observation establishes the baseline and never
   pauses. Self-healing on upgrade: the first request after deploying
   1.5.3 baselines from current mtimes and capture resumes.
-- Default auto-pause window reduced 15 → 5 minutes (less blast radius
+- Default auto-pause window reduced 15 -> 5 minutes (less blast radius
   if the heuristic ever misfires on a future environment).
 
 ### Added
-- `bin/magento panth:errormonitor:status` — single-glance answer to "why
+- `bin/magento panth:errormonitor:status` - single-glance answer to "why
   isn't capture working?". Shows every capture gate (master / PHP / JS /
   email switches, min severity), every suspension source (maintenance
   mode, explicit-pause flag, auto-pause-until + the live reason), the
@@ -78,7 +83,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   configured ignore-pattern count, and a tally of events actually
   recorded in the last hour / 24 hours. Pass `--reset-auto-detect` to
   wipe the baseline + pause flags and force re-baselining on the next
-  capture attempt — the canonical recovery step when capture appears
+  capture attempt - the canonical recovery step when capture appears
   stuck after a deploy.
 
 ## [1.5.2] - 2026-06-01
@@ -87,7 +92,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - **Recent Occurrences no longer show as empty `{channel: main}` cards.**
   Some Magento code paths (notably the cron observer wrapping a third-party
   cron job's exception) log via `$logger->error($exception->getTraceAsString())`
-  — the message IS the raw stack trace, with no exception object in context.
+  - the message IS the raw stack trace, with no exception object in context.
   Until now the capture stored the trace in the `message` column and left
   `stack_trace` NULL, so the detail page rendered every such occurrence as
   an empty card with just the channel context. The handler now detects a
@@ -100,7 +105,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - **Pagination on the error detail page's Recent Occurrences section.** Was
   hard-capped at 50; now shows 50 per page with Prev / Next, a compact
-  `1 … 3 4 5 … N` page strip, and a `showing X–Y of Z` counter. Page count
+  `1 ... 3 4 5 ... N` page strip, and a `showing X-Y of Z` counter. Page count
   is capped at 200 so a pathological group with millions of events can't
   blow up the render.
 
@@ -112,19 +117,19 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   during the rebuild then flood the error log with stale-cache "Script
   error for X" / RequireJS failures and missing-class warnings. The
   `DeploymentGuard` now also watches the mtime of three filesystem signals
-  that ONLY change on a real deploy —
+  that ONLY change on a real deploy -
   `pub/static/deployed_version.txt` (touched by
   `setup:static-content:deploy`), `generated/code/` and
-  `generated/metadata/` (touched by `setup:di:compile`) — and suspends
+  `generated/metadata/` (touched by `setup:di:compile`) - and suspends
   capture for the configured window after the most recent touch. New
-  setting **General → Auto-pause After Deploy (minutes)**, default `15`,
+  setting **General -> Auto-pause After Deploy (minutes)**, default `15`,
   set to `0` to disable. `var/cache` is intentionally NOT watched because
-  every admin config save touches it — would have produced too many false
+  every admin config save touches it - would have produced too many false
   positives.
 - **Auto-filter sibling-module operational alerts.** New setting
-  **General → Auto-Filter Sibling Module Operational Alerts**, default
+  **General -> Auto-Filter Sibling Module Operational Alerts**, default
   **on**. Drops messages matching the family-wide convention
-  `[VendorModuleName] BLOCKED/REJECTED/DENIED/REFUSED/DROPPED/QUARANTINED …`
+  `[VendorModuleName] BLOCKED/REJECTED/DENIED/REFUSED/DROPPED/QUARANTINED ...`
   used by sibling security / firewall modules. These are operational
   events ("we blocked something") rather than defects and previously
   produced dozens of one-occurrence groups in the grid. The pattern is
@@ -143,7 +148,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   `error`, `exception`, `throwable`, or empty).
 
 ### Notes
-- All three changes are additive — no schema change, no config migration,
+- All three changes are additive - no schema change, no config migration,
   no risk to existing data. `setup:upgrade` runs no new patches; defaults
   ship the new auto-detect and ecosystem-alert filter on. To revert the
   new behaviour: set Auto-pause After Deploy to `0`, set Auto-Filter
@@ -159,7 +164,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   the send-hour without re-scheduling) but actual delivery is hard-gated to
   at most one summary per UTC day, regardless of how many groups appear.
   Existing installs on `immediate_digest` are migrated to `daily_summary`
-  on `setup:upgrade` by `MigrateEmailModeToDaily` — no admin action needed.
+  on `setup:upgrade` by `MigrateEmailModeToDaily` - no admin action needed.
 - **Ignore-patterns is now repo-wide and matches more fields.** The textarea
   moved from "JavaScript Error Capture" to the **General** group and its
   match scope widened from "message only" to **message + file path + error
@@ -173,7 +178,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - **JS framework-generic errors no longer shatter into one-bucket-per-script.**
   Messages like `Cannot set/read properties of null/undefined ('xxx')`,
   `X is not a function`, `undefined is not valid JSON`, and the DOM
-  `insertBefore` family are now hashed on `(source, type, message)` only —
+  `insertBefore` family are now hashed on `(source, type, message)` only -
   the JS source file is intentionally dropped from the fingerprint. On a
   real production export this collapsed 22+ separate `"Cannot set
   properties of null (setting 'innerHTML')"` rows into one group. The
@@ -183,7 +188,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   script into separate groups for non-framework-generic JS errors.
 
 ### Added
-- `Setup/Patch/Data/RegroupErrorsV3` — re-runs the regrouper with the new
+- `Setup/Patch/Data/RegroupErrorsV3` - re-runs the regrouper with the new
   rules on `setup:upgrade` so existing sites collapse historical buckets
   automatically. **Zero data loss**: events are MOVED to the surviving
   canonical row and occurrence counts / first_seen / last_seen are
@@ -205,7 +210,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   normalisation rules covering JSON payloads, URLs, Unix/Windows paths,
   filenames, UUIDs, SHA digests, GraphQL Report IDs, generic 32+ hex tokens,
   PHP session IDs, IPv4/IPv6, quoted values, line/position/offset markers,
-  stack-frame counters, version strings, and big numeric IDs — ordered
+  stack-frame counters, version strings, and big numeric IDs - ordered
   specific-first so a general rule never eats tokens a more specific rule
   should have collapsed. ReDoS-safe (bounded repetition + a 32 KiB input
   guard).
@@ -224,7 +229,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   and merges duplicates in a single transaction. Triggered automatically by
   `setup:upgrade` (Magento's patch system records the apply so it never runs
   twice).
-- `bin/magento panth:errormonitor:regroup [--dry-run]` — run / preview the
+- `bin/magento panth:errormonitor:regroup [--dry-run]` - run / preview the
   same regroup on demand.
 
 ### Fixed
@@ -236,7 +241,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   admin URL with `/key/<csrf>/`.
 - **Identifier-shaped quoted tokens (module / table / column / config-path /
   cache-type names) are preserved in the fingerprint** instead of being
-  collapsed to `<v>` — different errors with different identifiers no longer
+  collapsed to `<v>` - different errors with different identifiers no longer
   false-group into one bucket.
 - **Elasticsearch `caused_by.type` / `root_cause.type` survives normalisation**
   via an out-of-band suffix marker, so different ES failure types under the
@@ -251,7 +256,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   redeployed.
 
 ### Added
-- **"Pages where this error occurred" section** on the error detail page —
+- **"Pages where this error occurred" section** on the error detail page -
   lists every distinct URL where the error was recorded, with occurrence
   count per URL, ordered most-frequent first (capped at the top 50).
 
@@ -268,7 +273,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   `<exportButton>` is wired into the listing toolbar; admins can export all
   matching rows (respecting current filters) to either format using the
   built-in `mui/export/gridToCsv` / `gridToXml` endpoints. ACL-gated by the
-  existing `Panth_ErrorMonitor::view` resource — no additional permission needed.
+  existing `Panth_ErrorMonitor::view` resource - no additional permission needed.
 
 ## [1.2.0] - 2026-05-28
 
@@ -277,10 +282,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   site is being deployed throw exceptions that previously got logged as
   "real" errors. Capture is now automatically suspended via two complementary
   signals:
-    - `MaintenanceMode` — when an admin runs `bin/magento maintenance:enable`
+    - `MaintenanceMode` - when an admin runs `bin/magento maintenance:enable`
       for a deploy, capture pauses for its duration. No extra work needed.
     - `bin/magento panth:errormonitor:pause [--minutes=N]` /
-      `bin/magento panth:errormonitor:resume` — explicit kill-switch with
+      `bin/magento panth:errormonitor:resume` - explicit kill-switch with
       auto-expiry, for deploys that don't use maintenance mode.
   Implemented in `Service\DeploymentGuard`; consulted by both the PHP log
   handler and the JS beacon endpoint.
@@ -303,7 +308,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Added **Daily Summary Hour** config field; relabelled the per-email cap.
 
 ### Added
-- `bin/magento panth:errormonitor:send-summary` — send the summary on demand
+- `bin/magento panth:errormonitor:send-summary` - send the summary on demand
   (bypasses the daily gate) to verify email configuration.
 - Unit tests for Fingerprinter, IpAnonymizer, and Severity.
 

@@ -19,7 +19,7 @@
              instance="Panth\ErrorMonitor\Cron\Cleanup" method="execute">
             <schedule>27 3 * * *</schedule>
         </job>
-        <!-- Daily heartbeat — no-op when Panth_Core handles it. -->
+        <!-- Daily heartbeat - no-op when Panth_Core handles it. -->
         <job name="panth_errormonitor_send_heartbeat"
              instance="Panth\ErrorMonitor\Cron\SendHeartbeat" method="execute">
             <schedule>43 4 * * *</schedule>

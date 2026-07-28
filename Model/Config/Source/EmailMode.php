@@ -14,7 +14,7 @@ class EmailMode implements OptionSourceInterface
     public function toOptionArray(): array
     {
         return [
-            ['value' => self::MODE_DAILY, 'label' => __('Daily summary — one email per day')],
+            ['value' => self::MODE_DAILY, 'label' => __('Daily summary - one email per day')],
         ];
     }
 }

@@ -24,7 +24,7 @@ class RegroupCommand extends Command
     {
         $this->setName('panth:errormonitor:regroup')
             ->setDescription('Re-fingerprint existing error groups and merge duplicates.')
-            ->addOption(self::OPT_DRY_RUN, null, InputOption::VALUE_NONE, 'Plan only — do not modify the database.');
+            ->addOption(self::OPT_DRY_RUN, null, InputOption::VALUE_NONE, 'Plan only - do not modify the database.');
         parent::configure();
     }
 

@@ -138,7 +138,7 @@ Performance - SEO - Adobe Commerce Cloud
 - **Email is off until you enter recipients**, so nothing is sent by surprise after install.
 
 ### Admin Error Grid
-- **Searchable and filterable grid** under Admin → Panth Infotech → Error Monitor → Error Log.
+- **Searchable and filterable grid** under Admin -> Panth Infotech -> Error Monitor -> Error Log.
 - **Per-row actions**: Resolve, Ignore, Delete.
 - **Mass actions**: Mass Resolve, Mass Ignore, Mass Delete.
 - **Detail view** with full stack trace, URL, referer, user agent, and IP.

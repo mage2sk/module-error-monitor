@@ -29,13 +29,13 @@
                        showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Auto-pause After Deploy (minutes)</label>
                     <validate>validate-digits validate-digits-range digits-range-0-120</validate>
-                    <comment><![CDATA[<b>Default 5.</b> Many deploys skip <code>maintenance:enable</code>; the resulting visitor/bot hits then flood the log with stale-cache noise. The module watches the mtime of <code>pub/static/deployed_version.txt</code>, <code>generated/code</code> and <code>generated/metadata</code> and suspends capture for this many minutes <b>after each detected change</b> (delta-based — only a strictly newer mtime triggers a pause, so a directory whose mtime simply <i>looks</i> recent does not silence capture forever). Set to <code>0</code> to disable. Diagnose with <code>bin/magento panth:errormonitor:status</code>.]]></comment>
+                    <comment><![CDATA[<b>Default 5.</b> Many deploys skip <code>maintenance:enable</code>; the resulting visitor/bot hits then flood the log with stale-cache noise. The module watches the mtime of <code>pub/static/deployed_version.txt</code>, <code>generated/code</code> and <code>generated/metadata</code> and suspends capture for this many minutes <b>after each detected change</b> (delta-based - only a strictly newer mtime triggers a pause, so a directory whose mtime simply <i>looks</i> recent does not silence capture forever). Set to <code>0</code> to disable. Diagnose with <code>bin/magento panth:errormonitor:status</code>.]]></comment>
                 </field>
                 <field id="filter_ecosystem_alerts" translate="label comment" type="select" sortOrder="18"
                        showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Auto-Filter Sibling Module Operational Alerts</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment><![CDATA[Drops log lines matching <code>[VendorModuleName] BLOCKED/REJECTED/DENIED ...</code> — the family-wide alert convention used by sibling security / firewall modules in the Panth ecosystem. These are operational events ("we blocked something") rather than defects and pollute the error grid. Recommended ON.]]></comment>
+                    <comment><![CDATA[Drops log lines matching <code>[VendorModuleName] BLOCKED/REJECTED/DENIED ...</code> - the family-wide alert convention used by sibling security / firewall modules in the Panth ecosystem. These are operational events ("we blocked something") rather than defects and pollute the error grid. Recommended ON.]]></comment>
                 </field>
                 <field id="ignore_patterns" translate="label comment" type="textarea" sortOrder="20"
                        showInDefault="1" showInWebsite="1" showInStore="1">
@@ -114,7 +114,7 @@
                        showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Daily Summary Hour (0-23, UTC)</label>
                     <validate>validate-digits validate-digits-range digits-range-0-23</validate>
-                    <comment>Hour of day the once-per-day summary is sent, e.g. 23 = end of day. The summary is sent at most ONCE per day, regardless of how many errors fire — there is no "every N hours" mode.</comment>
+                    <comment>Hour of day the once-per-day summary is sent, e.g. 23 = end of day. The summary is sent at most ONCE per day, regardless of how many errors fire - there is no "every N hours" mode.</comment>
                     <depends><field id="enabled">1</field></depends>
                 </field>
                 <field id="recipients" translate="label comment" type="textarea" sortOrder="30"

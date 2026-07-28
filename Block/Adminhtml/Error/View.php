@@ -119,7 +119,7 @@ class View extends Template
                 continue;
             }
             if ($prev > 0 && $p - $prev > 1) {
-                $pages[] = ['page' => 0, 'url' => '', 'current' => false, 'label' => '…'];
+                $pages[] = ['page' => 0, 'url' => '', 'current' => false, 'label' => '...'];
             }
             $pages[] = [
                 'page'    => $p,

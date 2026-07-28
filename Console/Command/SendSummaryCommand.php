@@ -61,7 +61,7 @@ class SendSummaryCommand extends Command
 
         $groups = array_values($collection->getItems());
         if ($groups === []) {
-            $output->writeln('<comment>No qualifying errors in the last 24 hours — nothing to send.</comment>');
+            $output->writeln('<comment>No qualifying errors in the last 24 hours - nothing to send.</comment>');
             return Command::SUCCESS;
         }
 
@@ -70,7 +70,7 @@ class SendSummaryCommand extends Command
             return Command::SUCCESS;
         }
 
-        $output->writeln('<error>Email send failed — check var/log for details and your mail transport.</error>');
+        $output->writeln('<error>Email send failed - check var/log for details and your mail transport.</error>');
         return Command::FAILURE;
     }
 

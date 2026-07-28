@@ -16,7 +16,7 @@
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
 
     <table name="panth_error_group" resource="default" engine="innodb"
-           comment="Panth Error Monitor — grouped/deduplicated errors">
+           comment="Panth Error Monitor - grouped/deduplicated errors">
         <column xsi:type="int" name="group_id" unsigned="true" nullable="false" identity="true" comment="Group ID"/>
         <column xsi:type="varchar" name="fingerprint" nullable="false" length="64"
                 comment="Stable hash identifying a unique error (drives dedupe)"/>
@@ -37,7 +37,7 @@
         <column xsi:type="timestamp" name="first_seen_at" on_update="false" nullable="true" comment="First occurrence (UTC)"/>
         <column xsi:type="timestamp" name="last_seen_at" on_update="false" nullable="true" comment="Most recent occurrence (UTC)"/>
         <column xsi:type="date" name="last_emailed_date" nullable="true"
-                comment="UTC date this group was last emailed — daily dedupe marker"/>
+                comment="UTC date this group was last emailed - daily dedupe marker"/>
         <column xsi:type="int" name="emailed_count" unsigned="true" nullable="false" default="0"
                 comment="Number of alert emails sent for this group"/>
         <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"/>
@@ -62,7 +62,7 @@
     </table>
 
     <table name="panth_error_event" resource="default" engine="innodb"
-           comment="Panth Error Monitor — individual error occurrences">
+           comment="Panth Error Monitor - individual error occurrences">
         <column xsi:type="int" name="event_id" unsigned="true" nullable="false" identity="true" comment="Event ID"/>
         <column xsi:type="int" name="group_id" unsigned="true" nullable="false" comment="FK panth_error_group.group_id"/>
         <column xsi:type="text" name="url" nullable="true" comment="Request URL / page where the error occurred"/>

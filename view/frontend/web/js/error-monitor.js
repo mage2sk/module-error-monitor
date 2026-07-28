@@ -1,7 +1,7 @@
 /**
  * Copyright © Panth Infotech. All rights reserved.
  *
- * Panth Error Monitor — storefront JS error collector.
+ * Panth Error Monitor - storefront JS error collector.
  *
  * Plain (non-AMD) script loaded with `defer` and configured from an inert
  * JSON <script> block, so it runs under a strict Content-Security-Policy.
@@ -82,7 +82,7 @@
     }
 
     window.addEventListener('error', function (event) {
-        // Ignore resource-load errors (img/script 404s) — they have no message.
+        // Ignore resource-load errors (img/script 404s) - they have no message.
         if (!event || (!event.message && !event.error)) {
             return;
         }
