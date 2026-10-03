@@ -1,0 +1,60 @@
+{
+    "panth_error_group": {
+        "column": {
+            "group_id": true,
+            "fingerprint": true,
+            "source": true,
+            "severity": true,
+            "error_type": true,
+            "message": true,
+            "file": true,
+            "line": true,
+            "status": true,
+            "occurrence_count": true,
+            "store_id": true,
+            "first_seen_at": true,
+            "last_seen_at": true,
+            "last_emailed_date": true,
+            "emailed_count": true,
+            "created_at": true,
+            "updated_at": true
+        },
+        "index": {
+            "PANTH_ERROR_GROUP_STATUS_LASTSEEN": true,
+            "PANTH_ERROR_GROUP_SOURCE_SEVERITY": true,
+            "PANTH_ERROR_GROUP_LAST_EMAILED": true,
+            "PANTH_ERROR_GROUP_STATUS_LAST_SEEN_AT": true,
+            "PANTH_ERROR_GROUP_LAST_EMAILED_DATE": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "PANTH_ERROR_GROUP_FINGERPRINT": true
+        }
+    },
+    "panth_error_event": {
+        "column": {
+            "event_id": true,
+            "group_id": true,
+            "url": true,
+            "referer": true,
+            "user_agent": true,
+            "ip": true,
+            "http_method": true,
+            "stack_trace": true,
+            "context": true,
+            "store_id": true,
+            "created_at": true
+        },
+        "index": {
+            "PANTH_ERROR_EVENT_GROUP": true,
+            "PANTH_ERROR_EVENT_CREATED": true,
+            "PANTH_ERROR_EVENT_GROUP_ID": true,
+            "PANTH_ERROR_EVENT_CREATED_AT": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "PANTH_ERROR_EVENT_GROUP_FK": true,
+            "PANTH_ERROR_EVENT_GROUP_ID_PANTH_ERROR_GROUP_GROUP_ID": true
+        }
+    }
+}

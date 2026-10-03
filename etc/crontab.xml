@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- Hourly check; actual delivery is gated by send-hour AND a per-day
+             flag, so at most ONE summary email is sent per UTC day regardless
+             of how often this cron fires. -->
+        <job name="panth_errormonitor_dispatch_notifications"
+             instance="Panth\ErrorMonitor\Cron\DispatchNotifications" method="execute">
+            <schedule>5 * * * *</schedule>
+        </job>
+        <!-- Prune old events and resolved groups per retention config. -->
+        <job name="panth_errormonitor_cleanup"
+             instance="Panth\ErrorMonitor\Cron\Cleanup" method="execute">
+            <schedule>27 3 * * *</schedule>
+        </job>
+    </group>
+</config>

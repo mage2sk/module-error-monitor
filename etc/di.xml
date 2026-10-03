@@ -1,0 +1,101 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!--
+        Attach our DB handler to Magento's main system logger. It receives
+        every log record at NOTICE level and above (which includes every
+        uncaught exception Magento funnels through the logger), drops records
+        below the configured minimum severity and persists the rest to the
+        grouped error tables.
+
+        ErrorRecorder is injected as a Proxy: the system logger is built very
+        early in the bootstrap, long before the database connection is ready,
+        so we must NOT force-instantiate the recorder (and its resource model)
+        at that point. The Proxy defers construction until the first error is
+        actually written.
+    -->
+    <type name="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="system" xsi:type="object">Magento\Framework\Logger\Handler\System</item>
+                <item name="debug" xsi:type="object">Magento\Framework\Logger\Handler\Debug</item>
+                <item name="syslog" xsi:type="object">Magento\Framework\Logger\Handler\Syslog</item>
+                <item name="panth_error_monitor_db" xsi:type="object">Panth\ErrorMonitor\Logger\DbHandler</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="Panth\ErrorMonitor\Logger\DbHandler">
+        <arguments>
+            <argument name="recorder" xsi:type="object">Panth\ErrorMonitor\Service\ErrorRecorder\Proxy</argument>
+            <argument name="ipAnonymizer" xsi:type="object">Panth\ErrorMonitor\Service\IpAnonymizer\Proxy</argument>
+            <argument name="deploymentGuard" xsi:type="object">Panth\ErrorMonitor\Service\DeploymentGuard\Proxy</argument>
+            <argument name="fingerprinter" xsi:type="object">Panth\ErrorMonitor\Service\Fingerprinter\Proxy</argument>
+        </arguments>
+    </type>
+
+    <!-- Grid collections for the admin error review listing. -->
+    <type name="Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup\Grid\Collection">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">panth_error_group</argument>
+            <argument name="resourceModel" xsi:type="string">Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup</argument>
+        </arguments>
+    </type>
+
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="panth_errormonitor_group_listing_data_source" xsi:type="string">Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Console command: panth:errormonitor:cleanup -->
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="panth_errormonitor_cleanup" xsi:type="object">Panth\ErrorMonitor\Console\Command\CleanupCommand</item>
+                <item name="panth_errormonitor_send_summary" xsi:type="object">Panth\ErrorMonitor\Console\Command\SendSummaryCommand</item>
+                <item name="panth_errormonitor_pause" xsi:type="object">Panth\ErrorMonitor\Console\Command\PauseCaptureCommand</item>
+                <item name="panth_errormonitor_resume" xsi:type="object">Panth\ErrorMonitor\Console\Command\ResumeCaptureCommand</item>
+                <item name="panth_errormonitor_regroup" xsi:type="object">Panth\ErrorMonitor\Console\Command\RegroupCommand</item>
+                <item name="panth_errormonitor_status" xsi:type="object">Panth\ErrorMonitor\Console\Command\StatusCommand</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <virtualType name="Panth\ErrorMonitor\Ui\ErrorGroupGridFulltextFilter" type="Panth\ErrorMonitor\Ui\Component\Listing\LikeFulltextFilter">
+        <arguments>
+            <argument name="columns" xsi:type="array">
+                <item name="message" xsi:type="string">main_table.message</item>
+                <item name="file" xsi:type="string">main_table.file</item>
+                <item name="error_type" xsi:type="string">main_table.error_type</item>
+                <item name="source" xsi:type="string">main_table.source</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Panth\ErrorMonitor\Ui\ErrorGroupGridFilterPool" type="Magento\Framework\View\Element\UiComponent\DataProvider\FilterPool">
+        <arguments>
+            <argument name="appliers" xsi:type="array">
+                <item name="regular" xsi:type="object">Magento\Framework\View\Element\UiComponent\DataProvider\RegularFilter</item>
+                <item name="fulltext" xsi:type="object">Panth\ErrorMonitor\Ui\ErrorGroupGridFulltextFilter</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Panth\ErrorMonitor\Ui\ErrorGroupGridReporting" type="Magento\Framework\View\Element\UiComponent\DataProvider\Reporting">
+        <arguments>
+            <argument name="filterPool" xsi:type="object">Panth\ErrorMonitor\Ui\ErrorGroupGridFilterPool</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="Panth\ErrorMonitor\Ui\ErrorGroupGridDataProvider" type="Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider">
+        <arguments>
+            <argument name="reporting" xsi:type="object">Panth\ErrorMonitor\Ui\ErrorGroupGridReporting</argument>
+        </arguments>
+    </virtualType>
+</config>

@@ -1,0 +1,61 @@
+<?php
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ *
+ * Error cards for the alert email. Rendered via the {{block}} directive so the
+ * markup is emitted as trusted HTML; every dynamic field is escaped here.
+ *
+ * @var \Panth\ErrorMonitor\Block\Email\Summary $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+$groups = $block->getErrorGroups();
+?>
+<?php if (empty($groups)): ?>
+    <p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#334155;">
+        <?= $escaper->escapeHtml(__('No errors to report.')) ?>
+    </p>
+<?php else: ?>
+    <?php foreach ($groups as $group): ?>
+        <?php
+        $severity = strtolower((string)$group->getData('severity'));
+        $color = $block->severityColor($severity);
+        $line = (int)$group->getData('line');
+        $fileLine = trim((string)$group->getData('file') . ($line ? ':' . $line : ''));
+        ?>
+        <table cellpadding="0" cellspacing="0" border="0" width="100%"
+               style="margin:0 0 16px;border:1px solid #e2e8f0;border-radius:8px;border-collapse:separate;">
+            <tr>
+                <td style="padding:14px 18px;font-family:Arial,Helvetica,sans-serif;">
+                    <span style="display:inline-block;padding:2px 8px;border-radius:4px;background:<?= $escaper->escapeHtmlAttr($color) ?>;color:#ffffff;font-size:11px;text-transform:uppercase;letter-spacing:.5px;">
+                        <?= $escaper->escapeHtml(strtoupper($severity)) ?>
+                    </span>
+                    <span style="color:#64748b;font-size:12px;margin-left:6px;">
+                        <?= $escaper->escapeHtml(strtoupper((string)$group->getData('source'))) ?>
+                    </span>
+                    <p style="margin:10px 0 4px;font-size:15px;color:#0f172a;font-weight:bold;">
+                        <?= $escaper->escapeHtml($group->getData('error_type')) ?>
+                    </p>
+                    <p style="margin:0 0 8px;font-size:14px;color:#334155;line-height:1.5;">
+                        <?= $escaper->escapeHtml($block->shorten((string)$group->getData('message'), 400)) ?>
+                    </p>
+                    <?php if ($fileLine !== ''): ?>
+                        <p style="margin:0 0 6px;font-size:12px;color:#64748b;font-family:'Courier New',monospace;word-break:break-all;">
+                            <?= $escaper->escapeHtml($fileLine) ?>
+                        </p>
+                    <?php endif; ?>
+                    <p style="margin:0 0 12px;font-size:12px;color:#64748b;">
+                        <?= $escaper->escapeHtml(__('Occurrences')) ?>:
+                        <strong><?= (int)$group->getData('occurrence_count') ?></strong>
+                        &nbsp;|&nbsp;
+                        <?= $escaper->escapeHtml(__('Last seen')) ?>:
+                        <?= $escaper->escapeHtml((string)$group->getData('last_seen_at')) ?> UTC
+                    </p>
+                    <a href="<?= $escaper->escapeUrl($block->getViewUrl($group)) ?>"
+                       style="display:inline-block;padding:8px 16px;background:#0f172a;color:#ffffff;text-decoration:none;border-radius:6px;font-size:13px;font-family:Arial,Helvetica,sans-serif;">
+                        <?= $escaper->escapeHtml(__('View details')) ?>
+                    </a>
+                </td>
+            </tr>
+        </table>
+    <?php endforeach; ?>
+<?php endif; ?>
