@@ -348,7 +348,7 @@ These steps leave the `panth_error_group` and `panth_error_event` tables, the co
 
 ## License
 
-Commercial software license. See [LICENSE.txt](LICENSE.txt) in this repository.
+Free and open source under the MIT License. See [LICENSE.txt](LICENSE.txt).
 
 ## Changelog
 
