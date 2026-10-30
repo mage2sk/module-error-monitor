@@ -1,0 +1,16 @@
+.panth-em-clamp {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 16rem;
+    max-width: 36rem;
+    white-space: normal;
+}
+.panth-em-clamp--short {
+    -webkit-line-clamp: 2;
+    min-width: 8rem;
+    max-width: 16rem;
+}

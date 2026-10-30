@@ -1,0 +1,251 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="panth" translate="label" sortOrder="400">
+            <label>Panth Infotech</label>
+        </tab>
+        <section id="panth_errormonitor" translate="label" type="text" sortOrder="60"
+                 showInDefault="1" showInWebsite="1" showInStore="1">
+            <label>Error Monitor</label>
+            <tab>panth</tab>
+            <resource>Panth_ErrorMonitor::system_config</resource>
+
+            <group id="general" translate="label" type="text" sortOrder="10"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>General</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Error Monitor</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Master switch. When off, no errors are captured and no emails are sent.</comment>
+                </field>
+                <field id="auto_pause_window_minutes" translate="label comment" type="text" sortOrder="15"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Auto-pause After Deploy (minutes)</label>
+                    <validate>validate-digits validate-digits-range digits-range-0-120</validate>
+                    <comment><![CDATA[<b>Default 5.</b> Many deploys skip <code>maintenance:enable</code>; the resulting visitor/bot hits then flood the log with stale-cache noise. The module watches the mtime of <code>pub/static/deployed_version.txt</code>, <code>generated/code</code> and <code>generated/metadata</code> and suspends capture for this many minutes <b>after each detected change</b> (delta-based - only a strictly newer mtime triggers a pause, so a directory whose mtime simply <i>looks</i> recent does not silence capture forever). Set to <code>0</code> to disable. Diagnose with <code>bin/magento panth:errormonitor:status</code>.]]></comment>
+                </field>
+                <field id="filter_ecosystem_alerts" translate="label comment" type="select" sortOrder="18"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Auto-Filter Sibling Module Operational Alerts</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Drops log lines matching <code>[VendorModuleName] BLOCKED/REJECTED/DENIED ...</code> - the family-wide alert convention used by sibling security / firewall modules in the Panth ecosystem. These are operational events ("we blocked something") rather than defects and pollute the error grid. Recommended ON.]]></comment>
+                </field>
+                <field id="ignore_patterns" translate="label comment" type="textarea" sortOrder="20"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Ignore Errors Matching</label>
+                    <comment><![CDATA[One substring per line, matched case-insensitively. An error is dropped at capture time if the substring appears anywhere in its <b>message</b>, <b>file path</b>, <b>error class</b>, or <b>stack trace</b>. Use this to silence a whole noisy module (e.g. <code>Vendor_Module</code>, <code>vendor/somevendor/</code>) or a specific message family (e.g. <code>Deprecated Functionality:</code>, <code>Page URL:</code>).]]></comment>
+                </field>
+                <field id="max_events_per_group" translate="label comment" type="text" sortOrder="25"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Max Stored Occurrences per Error Group</label>
+                    <validate>validate-digits validate-digits-range digits-range-0-100000</validate>
+                    <comment><![CDATA[<b>Default 50.</b> Detailed occurrence rows (URL, user agent, stack trace) kept per error group, so one repeating error cannot fill the database. What happens at the limit is set below. Set to <code>0</code> for no limit.]]></comment>
+                </field>
+                <field id="event_cap_mode" translate="label comment" type="select" sortOrder="26"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>When the Occurrence Limit Is Reached</label>
+                    <source_model>Panth\ErrorMonitor\Model\Config\Source\EventCapMode</source_model>
+                    <comment><![CDATA[<b>Default: keep the oldest rows</b> (the behaviour of 1.6.x): once a group holds the maximum number of rows, further occurrences only raise the occurrence count, Last Seen and the hourly counters, and no stored row is deleted. "Keep the newest rows" replaces the oldest rows so the latest stack traces are always available. The daily summary counts occurrences from exact hourly counters in both modes.]]></comment>
+                </field>
+            </group>
+
+            <group id="filters" translate="label" type="text" sortOrder="15"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Noise Filters</label>
+                <field id="ignore_bots" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Ignore Errors from Bots/Crawlers</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[<b>Default Yes.</b> Storefront JS reports and PHP errors raised during a web request whose User-Agent matches the list below are dropped. When set to No they are recorded with an <code>is_bot</code> flag in the occurrence context, and the daily summary shows the bot share per group.]]></comment>
+                </field>
+                <field id="bot_user_agents" translate="label comment" type="textarea" sortOrder="20"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Bot User-Agent Patterns</label>
+                    <comment><![CDATA[One pattern per line, matched case-insensitively against the User-Agent. Plain words match as substrings (e.g. <code>bingbot</code>); the single word <code>bot</code> only matches as a separate word or a name ending in "bot" followed by <code>/</code>, <code>;</code>, <code>)</code> or <code>-</code> (so phone and app names such as CUBOT or RobotApp are not treated as bots); anything else is used as a regular expression (e.g. <code>^Mozilla/5\.0 \(compatible; Foo</code>). Each line is tested on its own; invalid expressions are skipped, and if every line is invalid the default list is used. Leave empty to disable bot detection.]]></comment>
+                </field>
+                <field id="email_exclude_bot_only" translate="label comment" type="select" sortOrder="30"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Leave Bot-only Groups out of the Summary Email</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>A group whose occurrences in the last 24 hours all came from bots is not listed in the email; the email footer counts how many were hidden.</comment>
+                </field>
+                <field id="noise_enabled" translate="label comment" type="select" sortOrder="40"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Ignore Known Browser and Third-party Noise</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[<b>Default Yes.</b> Drops errors that are not caused by the store: the Outlook / Safe Links scanner (<code>Object Not Found Matching Id</code>), private-mode and full localStorage errors from <code>customer-data.js</code> / <code>js.storage.js</code>, <code>Script error.</code> without a stack trace, and errors from browser extensions. The same rules hide matching groups that were stored earlier from the summary email.]]></comment>
+                </field>
+                <field id="noise_patterns" translate="label comment" type="textarea" sortOrder="50"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Noise Patterns</label>
+                    <comment><![CDATA[One rule per line; a rule is a case-insensitive regular expression tested against the error message. Prefix it with <code>file:</code>, <code>stack:</code>, <code>source:</code> (file or stack trace) or <code>any:</code> (message, file and stack) to test another field, or <code>nostack:</code> to match the message only when there is no stack trace. Join conditions with <code> &amp;&amp; </code> to require all of them, e.g. <code>source:customer-data &amp;&amp; message:SecurityError</code>. Invalid rules are skipped.]]></comment>
+                    <depends><field id="noise_enabled">1</field></depends>
+                </field>
+            </group>
+
+            <group id="php_capture" translate="label" type="text" sortOrder="20"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>PHP Error Capture</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Capture PHP Exceptions</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Records exceptions and errors that Magento writes to the system log.</comment>
+                </field>
+                <field id="min_severity" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Minimum Severity to Capture</label>
+                    <source_model>Panth\ErrorMonitor\Model\Config\Source\Severity</source_model>
+                    <comment>Only errors at this level or more severe are stored.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="throttle_window_seconds" translate="label comment" type="text" sortOrder="30"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Coalesce Window (seconds)</label>
+                    <validate>validate-digits</validate>
+                    <comment><![CDATA[When the same error repeats, only one database write is made per group within this window; the rest are counted in cache and folded into the total. Protects the database and binary log from a single high-frequency error. Default 60. Set to 0 to write every occurrence.]]></comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="graphql_client_errors" translate="label comment" type="select" sortOrder="40"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>GraphQL Client Errors</label>
+                    <source_model>Panth\ErrorMonitor\Model\Config\Source\GraphQlClientErrorMode</source_model>
+                    <comment><![CDATA[Errors that GraphQL marks as client-safe (<code>isClientSafe()</code>), such as <code>Cannot query field ... on type ...</code> or address validation messages, are caused by the request, not by the server. <b>Default: do not record.</b> "Record as notice" stores them with severity notice and keeps them out of the summary email.]]></comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+            </group>
+
+            <group id="js_capture" translate="label" type="text" sortOrder="30"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>JavaScript Error Capture (Storefront)</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Capture Storefront JS Errors</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Injects a tiny, CSP-safe collector that reports uncaught JS errors and promise rejections.</comment>
+                </field>
+                <field id="sample_rate" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Sample Rate (%)</label>
+                    <validate>validate-digits validate-digits-range digits-range-0-100</validate>
+                    <comment>Percentage of page views whose JS errors are reported (0-100). 0 stops reporting. Lower this on very high-traffic sites.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="rate_limit_per_minute" translate="label comment" type="text" sortOrder="30"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Max Reports per IP per Minute</label>
+                    <validate>validate-digits</validate>
+                    <comment>Server-side rate limit. Requests beyond this are silently dropped to prevent abuse/flooding.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="max_body_kb" translate="label comment" type="text" sortOrder="40"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Max Report Body Size (KB)</label>
+                    <validate>validate-digits</validate>
+                    <comment>Larger payloads are rejected before parsing.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="max_new_groups_per_hour" translate="label comment" type="text" sortOrder="50"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Max New JS Error Groups per Hour</label>
+                    <validate>validate-digits validate-digits-range digits-range-0-100000</validate>
+                    <comment><![CDATA[<b>Default 100.</b> Store-wide limit on how many new, never-seen JavaScript error groups the storefront collector may create per clock hour. Beyond it, new JS errors are dropped (errors already in the log are still counted) and one warning per hour is written to <code>var/log/system.log</code>. Protects the database from floods of fake reports. Set to <code>0</code> for no limit.]]></comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+            </group>
+
+            <group id="email" translate="label" type="text" sortOrder="40"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Email Alerts</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Send Email Alerts</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Alerts are sent by cron, never synchronously. Each error group is emailed at most once per day.</comment>
+                </field>
+                <field id="send_hour" translate="label comment" type="text" sortOrder="25"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Daily Summary Hour (0-23, UTC)</label>
+                    <validate>validate-digits validate-digits-range digits-range-0-23</validate>
+                    <comment>Hour of day (UTC) the once-per-day summary is sent, e.g. 23 = end of day. The email lists groups with occurrences in the 24 hours before sending and shows times in the store timezone. The summary is sent at most ONCE per day, regardless of how many errors fire - there is no "every N hours" mode.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="recipients" translate="label comment" type="textarea" sortOrder="30"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Recipient Email(s)</label>
+                    <validate>required-entry</validate>
+                    <comment>Comma- or newline-separated. Invalid addresses are skipped.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="sender" translate="label" type="select" sortOrder="40"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Email Sender Identity</label>
+                    <source_model>Magento\Config\Model\Config\Source\Email\Identity</source_model>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="min_severity" translate="label comment" type="select" sortOrder="50"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Minimum Severity to Email</label>
+                    <source_model>Panth\ErrorMonitor\Model\Config\Source\Severity</source_model>
+                    <comment>Lower-severity errors are still stored, just not emailed.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="max_per_run" translate="label comment" type="text" sortOrder="60"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Max Error Groups per Email</label>
+                    <validate>validate-digits</validate>
+                    <comment>Hard cap on how many error groups a single email lists. Prevents huge emails during incidents.</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+            </group>
+
+            <group id="privacy" translate="label" type="text" sortOrder="50"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Privacy</label>
+                <field id="store_ip" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Store Client IP</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When off, no IP address is stored on error events.</comment>
+                </field>
+                <field id="anonymize_ip" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Anonymise IP</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Masks the last octet (IPv4) / last 80 bits (IPv6) before storing, for GDPR compliance.</comment>
+                    <depends><field id="store_ip">1</field></depends>
+                </field>
+            </group>
+
+            <group id="retention" translate="label" type="text" sortOrder="60"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Data Retention</label>
+                <field id="event_days" translate="label comment" type="text" sortOrder="10"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Keep Individual Events (days)</label>
+                    <validate>validate-digits</validate>
+                    <comment>Occurrence rows older than this are deleted by the daily cleanup cron. Group aggregates are kept.</comment>
+                </field>
+                <field id="resolved_group_days" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Keep Resolved Groups (days)</label>
+                    <validate>validate-digits</validate>
+                    <comment>Resolved error groups not seen for this many days are removed entirely.</comment>
+                </field>
+                <field id="unresolved_group_days" translate="label comment" type="text" sortOrder="30"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Keep Unresolved Groups (days)</label>
+                    <validate>validate-digits</validate>
+                    <comment>Groups still in status New that have not occurred for this many days are removed by the daily cleanup, together with their events. Ignored groups are never removed by this setting. 0 keeps unresolved groups until an administrator resolves or deletes them.</comment>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
