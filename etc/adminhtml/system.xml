@@ -88,6 +88,32 @@
                     <comment><![CDATA[One rule per line; a rule is a case-insensitive regular expression tested against the error message. Prefix it with <code>file:</code>, <code>stack:</code>, <code>source:</code> (file or stack trace) or <code>any:</code> (message, file and stack) to test another field, or <code>nostack:</code> to match the message only when there is no stack trace. Join conditions with <code> &amp;&amp; </code> to require all of them, e.g. <code>source:customer-data &amp;&amp; message:SecurityError</code>. Invalid rules are skipped.]]></comment>
                     <depends><field id="noise_enabled">1</field></depends>
                 </field>
+                <field id="ip_filter_enabled" translate="label comment" type="select" sortOrder="60"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Ignore Errors from These IPs / Networks</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[<b>Default No.</b> Storefront JS reports, and PHP errors raised during a web request, whose client IP is in the list below are dropped and counted in the summary email footer ("N hidden by IP/network filter"). Use it for crawlers that send a normal browser User-Agent, so the bot patterns cannot catch them.]]></comment>
+                </field>
+                <field id="ip_networks" translate="label comment" type="textarea" sortOrder="70"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>IPs / Networks</label>
+                    <backend_model>Panth\ErrorMonitor\Model\Config\Backend\IpNetworkList</backend_model>
+                    <comment><![CDATA[One entry per line: a single IPv4 or IPv6 address or a CIDR range, e.g. <code>116.179.0.0/16</code> or <code>2600:3c01::/32</code>. The default list holds Baidu crawler networks that use a browser User-Agent (<code>116.179.0.0/16</code>, <code>220.181.0.0/16</code>). Lines that are not valid are rejected on save; if an invalid line reaches the configuration in another way it is skipped and capture keeps working.]]></comment>
+                    <depends><field id="ip_filter_enabled">1</field></depends>
+                </field>
+                <field id="ip_networks_as_bots" translate="label comment" type="select" sortOrder="80"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Treat These Networks as Bots</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[<b>Default No.</b> When Yes, matching requests are not dropped by this filter; they are handled like a bot User-Agent instead. With "Ignore Errors from Bots/Crawlers" = Yes they are still dropped (and counted in the footer); with No they are stored with the <code>is_bot</code> flag, count in the "Bots: N%" share and bot-only groups are left out of the email.]]></comment>
+                    <depends><field id="ip_filter_enabled">1</field></depends>
+                </field>
+                <field id="trusted_proxies" translate="label comment" type="textarea" sortOrder="90"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Trusted Proxy IPs / Networks</label>
+                    <backend_model>Panth\ErrorMonitor\Model\Config\Backend\IpNetworkList</backend_model>
+                    <comment><![CDATA[One IPv4/IPv6 address or CIDR range per line. Only when the connecting address (<code>REMOTE_ADDR</code>) is in this list is the client IP read from <code>CF-Connecting-IP</code>, then from <code>X-Forwarded-For</code> (the nearest public address that is not a trusted proxy); otherwise <code>REMOTE_ADDR</code> is used. The default list holds Cloudflare's published IPv4 and IPv6 ranges and the private and loopback ranges. Remove the private ranges if visitors can reach the server directly through a local proxy that does not overwrite these headers. Leave empty to always use <code>REMOTE_ADDR</code>. The resolved IP is used by this filter, the per-IP rate limit and the stored occurrence IP.]]></comment>
+                </field>
             </group>
 
             <group id="php_capture" translate="label" type="text" sortOrder="20"

@@ -69,3 +69,5 @@
 "Line numbers of minified or preprocessed templates are not reliable.","Line numbers of minified or preprocessed templates are not reliable."
 "Raw context","Raw context"
 "Error Monitor was upgraded with new grouping rules. Run ""bin/magento panth:errormonitor:refingerprint"" once to merge error groups that were split by the old rules and to move stored GraphQL client errors to notice. This message disappears after the command has run.","Error Monitor was upgraded with new grouping rules. Run ""bin/magento panth:errormonitor:refingerprint"" once to merge error groups that were split by the old rules and to move stored GraphQL client errors to notice. This message disappears after the command has run."
+"%1 hidden by IP/network filter (occurrences in the last 24 hours).","%1 hidden by IP/network filter (occurrences in the last 24 hours)."
+"""%1"" contains lines that are not an IPv4/IPv6 address or CIDR range: %2","""%1"" contains lines that are not an IPv4/IPv6 address or CIDR range: %2"

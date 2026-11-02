@@ -87,5 +87,15 @@
         "constraint": {
             "PRIMARY": true
         }
+    },
+    "panth_error_filter_hourly": {
+        "column": {
+            "hour_start": true,
+            "reason": true,
+            "occurrences": true
+        },
+        "constraint": {
+            "PRIMARY": true
+        }
     }
 }

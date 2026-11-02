@@ -98,6 +98,10 @@ class Summary extends Template
         } else {
             $lines[] = (string)__('No groups were hidden by ignore rules or the bot filter.');
         }
+        $hiddenIp = (int)($digest['hidden_ip'] ?? 0);
+        if ($hiddenIp > 0 || !empty($digest['ip_filter_enabled'])) {
+            $lines[] = (string)__('%1 hidden by IP/network filter (occurrences in the last 24 hours).', $hiddenIp);
+        }
         $resolved = (int)($digest['resolved_active'] ?? 0);
         if ($resolved > 0) {
             $lines[] = (string)__(

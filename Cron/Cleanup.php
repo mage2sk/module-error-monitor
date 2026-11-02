@@ -7,6 +7,7 @@ use Panth\ErrorMonitor\Helper\Config;
 use Panth\ErrorMonitor\Model\ErrorGroup;
 use Panth\ErrorMonitor\Model\ResourceModel\ErrorEvent as ErrorEventResource;
 use Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup as ErrorGroupResource;
+use Panth\ErrorMonitor\Service\IpNetworkFilter;
 use Panth\ErrorMonitor\Service\RateLimiter;
 use Psr\Log\LoggerInterface;
 
@@ -19,7 +20,8 @@ class Cleanup
         private readonly ErrorEventResource $eventResource,
         private readonly ErrorGroupResource $groupResource,
         private readonly LoggerInterface $logger,
-        private readonly ?RateLimiter $rateLimiter = null
+        private readonly ?RateLimiter $rateLimiter = null,
+        private readonly ?IpNetworkFilter $ipNetworkFilter = null
     ) {
     }
 
@@ -72,12 +74,16 @@ class Cleanup
     {
         $now ??= time();
         $result = ['hourly_counters' => 0, 'rate_limit_rows' => 0];
+        $cutoff = gmdate('Y-m-d H:00:00', $now - self::HOURLY_RETENTION_DAYS * 86400);
         try {
             $table = $this->groupResource->getHourlyTable();
             $result['hourly_counters'] = (int)$this->groupResource->getConnection()->delete(
                 $table !== '' ? $table : ErrorGroupResource::HOURLY_TABLE,
-                ['hour_start < ?' => gmdate('Y-m-d H:00:00', $now - self::HOURLY_RETENTION_DAYS * 86400)]
+                ['hour_start < ?' => $cutoff]
             );
+            if ($this->ipNetworkFilter !== null) {
+                $result['hourly_counters'] += $this->ipNetworkFilter->purgeBefore($cutoff);
+            }
             if ($this->rateLimiter !== null) {
                 $result['rate_limit_rows'] = $this->rateLimiter->purgeExpired($now);
             }

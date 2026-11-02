@@ -37,6 +37,7 @@
             <argument name="ipAnonymizer" xsi:type="object">Panth\ErrorMonitor\Service\IpAnonymizer\Proxy</argument>
             <argument name="deploymentGuard" xsi:type="object">Panth\ErrorMonitor\Service\DeploymentGuard\Proxy</argument>
             <argument name="fingerprinter" xsi:type="object">Panth\ErrorMonitor\Service\Fingerprinter\Proxy</argument>
+            <argument name="ipFilter" xsi:type="object">Panth\ErrorMonitor\Service\IpNetworkFilter\Proxy</argument>
         </arguments>
     </type>
 
@@ -92,9 +93,21 @@
             <argument name="resource" xsi:type="object">Magento\Framework\App\ResourceConnection</argument>
         </arguments>
     </type>
+    <type name="Panth\ErrorMonitor\Service\IpNetworkFilter">
+        <arguments>
+            <argument name="resource" xsi:type="object">Magento\Framework\App\ResourceConnection</argument>
+            <argument name="resolver" xsi:type="object">Panth\ErrorMonitor\Service\ClientIpResolver</argument>
+        </arguments>
+    </type>
+    <type name="Panth\ErrorMonitor\Model\Summary\DigestBuilder">
+        <arguments>
+            <argument name="ipNetworkFilter" xsi:type="object">Panth\ErrorMonitor\Service\IpNetworkFilter</argument>
+        </arguments>
+    </type>
     <type name="Panth\ErrorMonitor\Cron\Cleanup">
         <arguments>
             <argument name="rateLimiter" xsi:type="object">Panth\ErrorMonitor\Service\RateLimiter</argument>
+            <argument name="ipNetworkFilter" xsi:type="object">Panth\ErrorMonitor\Service\IpNetworkFilter</argument>
         </arguments>
     </type>
     <type name="Panth\ErrorMonitor\Service\BotDetector">
@@ -133,6 +146,7 @@
         <arguments>
             <argument name="botDetector" xsi:type="object">Panth\ErrorMonitor\Service\BotDetector</argument>
             <argument name="reasonSerializer" xsi:type="object">Panth\ErrorMonitor\Service\JsReasonSerializer</argument>
+            <argument name="ipFilter" xsi:type="object">Panth\ErrorMonitor\Service\IpNetworkFilter</argument>
         </arguments>
     </type>
 

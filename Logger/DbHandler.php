@@ -10,12 +10,14 @@ use Panth\ErrorMonitor\Model\Config\Source\Severity;
 use Panth\ErrorMonitor\Model\ErrorGroup;
 use Panth\ErrorMonitor\Service\BotDetector;
 use Panth\ErrorMonitor\Service\CliContext;
+use Panth\ErrorMonitor\Service\ClientIpResolver;
 use Panth\ErrorMonitor\Service\DeploymentGuard;
 use Panth\ErrorMonitor\Service\ErrorRecorder;
 use Panth\ErrorMonitor\Service\ErrorPayload;
 use Panth\ErrorMonitor\Service\Fingerprinter;
 use Panth\ErrorMonitor\Service\GraphQlClientErrorFilter;
 use Panth\ErrorMonitor\Service\IpAnonymizer;
+use Panth\ErrorMonitor\Service\IpNetworkFilter;
 
 class DbHandler extends AbstractProcessingHandler
 {
@@ -40,6 +42,8 @@ class DbHandler extends AbstractProcessingHandler
         . '|Too many arguments|No arguments expected|The "-{1,2}[^"\n]+" option does not exist'
         . '|The "-{1,2}[^"\n]+" option requires a value|The "-{1,2}[^"\n]+" option does not accept a value)/';
 
+    private const MAX_LOCATED_MESSAGES = 50;
+
     private const CONSOLE_USAGE_FRAME = '~(?:^|\n)#0 [^\n]*?: Symfony\\\\Component\\\\Console\\\\~';
 
     private readonly BotDetector $botDetector;
@@ -47,6 +51,16 @@ class DbHandler extends AbstractProcessingHandler
     private readonly GraphQlClientErrorFilter $graphQlFilter;
 
     private readonly CliContext $cliContext;
+
+    private readonly IpNetworkFilter $ipFilter;
+
+    private ?ErrorPayload $pending = null;
+
+    private array $locatedMessages = [];
+
+    private ?string $requestKey = null;
+
+    private bool $shutdownRegistered = false;
 
     public function __construct(
         private readonly ErrorRecorder $recorder,
@@ -58,12 +72,34 @@ class DbHandler extends AbstractProcessingHandler
         bool $bubble = true,
         ?BotDetector $botDetector = null,
         ?GraphQlClientErrorFilter $graphQlFilter = null,
-        ?CliContext $cliContext = null
+        ?CliContext $cliContext = null,
+        ?IpNetworkFilter $ipFilter = null
     ) {
         parent::__construct($level, $bubble);
         $this->botDetector = $botDetector ?? new BotDetector($scopeConfig);
         $this->graphQlFilter = $graphQlFilter ?? new GraphQlClientErrorFilter($scopeConfig);
         $this->cliContext = $cliContext ?? new CliContext();
+        $this->ipFilter = $ipFilter ?? new IpNetworkFilter($scopeConfig);
+    }
+
+    public function close(): void
+    {
+        $this->flushPending();
+        parent::close();
+    }
+
+    public function flushPending(): void
+    {
+        $pending = $this->pending;
+        $this->pending = null;
+        if ($pending === null) {
+            return;
+        }
+        try {
+            $this->recorder->record($pending);
+        } catch (\Throwable $e) {
+            return;
+        }
     }
 
     protected function write($record): void
@@ -91,11 +127,19 @@ class DbHandler extends AbstractProcessingHandler
                 return;
             }
 
+            $isWeb = $this->serverValue('REQUEST_METHOD') !== null;
+            [$clientIp, $ipSource] = $isWeb
+                ? $this->ipFilter->resolver()->resolveFromServer($_SERVER)
+                : [null, ClientIpResolver::SOURCE_REMOTE_ADDR];
+            $ipDecision = $this->ipFilter->decide($clientIp);
+
             $userAgent = $this->serverValue('HTTP_USER_AGENT');
             $isBot = $userAgent !== null && $this->botDetector->isBot($userAgent);
             if ($isBot && $this->botDetector->shouldIgnore()) {
                 return;
             }
+            $ipBot = $ipDecision === IpNetworkFilter::BOT && !$isBot;
+            $isBot = $isBot || $ipDecision === IpNetworkFilter::BOT;
 
             $graphQlClient = $this->graphQlFilter->isClientSafe($message, $context);
             if ($graphQlClient) {
@@ -118,11 +162,18 @@ class DbHandler extends AbstractProcessingHandler
                 }
             }
 
+            if ($ipDecision === IpNetworkFilter::DROP || ($ipBot && $this->botDetector->shouldIgnore())) {
+                $this->ipFilter->countHidden();
+                return;
+            }
+
             $payload = $this->buildPayload($severity, $message, $context, $channel, $extra, [
                 'is_bot' => $isBot,
+                IpNetworkFilter::CONTEXT_FLAG => $ipDecision === IpNetworkFilter::BOT,
                 GraphQlClientErrorFilter::CONTEXT_FLAG => $graphQlClient,
-            ]);
-            $this->recorder->record($payload);
+            ], $clientIp, $ipSource);
+            $this->dispatch($payload, $isWeb, $severity === 'error' && $context === []
+                && in_array(strtolower($channel), self::GENERIC_CHANNELS, true));
         } catch (\Throwable $e) {
             return;
         }
@@ -156,7 +207,9 @@ class DbHandler extends AbstractProcessingHandler
         array $context,
         string $channel,
         array $extra = [],
-        array $flags = []
+        array $flags = [],
+        ?string $clientIp = null,
+        string $ipSource = ClientIpResolver::SOURCE_REMOTE_ADDR
     ): ErrorPayload {
         $type = '';
         $file = null;
@@ -234,6 +287,9 @@ class DbHandler extends AbstractProcessingHandler
                 $ctx[$flag] = true;
             }
         }
+        if ($ipSource !== ClientIpResolver::SOURCE_REMOTE_ADDR) {
+            $ctx['client_ip_source'] = $ipSource;
+        }
 
         return new ErrorPayload(
             source: ErrorGroup::SOURCE_PHP,
@@ -246,11 +302,69 @@ class DbHandler extends AbstractProcessingHandler
             url: $this->serverValue('REQUEST_URI'),
             referer: $this->serverValue('HTTP_REFERER'),
             userAgent: $this->serverValue('HTTP_USER_AGENT'),
-            ip: $this->ipAnonymizer->process($this->serverValue('REMOTE_ADDR')),
+            ip: $this->ipAnonymizer->process($clientIp ?? $this->serverValue('REMOTE_ADDR')),
             httpMethod: $this->serverValue('REQUEST_METHOD'),
             context: $ctx,
             storeId: 0
         );
+    }
+
+    private function dispatch(ErrorPayload $payload, bool $isWeb, bool $plainLine): void
+    {
+        if (!$isWeb) {
+            $this->flushPending();
+            $this->recorder->record($payload);
+            return;
+        }
+        $this->startRequestScope();
+        $key = $this->messageKey($payload);
+        if ($plainLine && $payload->file === null && $payload->stackTrace === null) {
+            if (isset($this->locatedMessages[$key])) {
+                return;
+            }
+            $this->flushPending();
+            $this->pending = $payload;
+            $this->registerShutdownFlush();
+            return;
+        }
+        if ($this->pending !== null && $this->messageKey($this->pending) === $key) {
+            $this->pending = null;
+        } else {
+            $this->flushPending();
+        }
+        $this->recorder->record($payload);
+        if (count($this->locatedMessages) >= self::MAX_LOCATED_MESSAGES) {
+            array_shift($this->locatedMessages);
+        }
+        $this->locatedMessages[$key] = true;
+    }
+
+    private function messageKey(ErrorPayload $payload): string
+    {
+        return $payload->source . "\n" . trim($payload->message);
+    }
+
+    private function startRequestScope(): void
+    {
+        $key = (string)($_SERVER['REQUEST_TIME_FLOAT'] ?? '') . '|' . (string)$this->serverValue('REQUEST_URI');
+        if ($this->requestKey === $key) {
+            return;
+        }
+        $this->requestKey = $key;
+        $this->locatedMessages = [];
+        $this->flushPending();
+    }
+
+    private function registerShutdownFlush(): void
+    {
+        if ($this->shutdownRegistered) {
+            return;
+        }
+        $this->shutdownRegistered = true;
+        $handler = \WeakReference::create($this);
+        register_shutdown_function(static function () use ($handler): void {
+            $handler->get()?->flushPending();
+        });
     }
 
     private function contextValue(mixed $value): mixed

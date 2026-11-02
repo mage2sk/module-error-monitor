@@ -11,6 +11,7 @@ use Panth\ErrorMonitor\Model\ErrorGroup;
 use Panth\ErrorMonitor\Model\ResourceModel\ErrorEvent as ErrorEventResource;
 use Panth\ErrorMonitor\Model\ResourceModel\ErrorGroup as ErrorGroupResource;
 use Panth\ErrorMonitor\Service\BotDetector;
+use Panth\ErrorMonitor\Service\IpNetworkFilter;
 use Panth\ErrorMonitor\Service\NoiseFilter;
 use Panth\ErrorMonitor\Service\PathMapper;
 use Panth\ErrorMonitor\Service\TimeFormatter;
@@ -41,7 +42,8 @@ class DigestBuilder
         private readonly BotDetector $botDetector,
         private readonly NoiseFilter $noiseFilter,
         private readonly TimeFormatter $timeFormatter,
-        private readonly PathMapper $pathMapper
+        private readonly PathMapper $pathMapper,
+        private readonly ?IpNetworkFilter $ipNetworkFilter = null
     ) {
     }
 
@@ -51,6 +53,10 @@ class DigestBuilder
         $since = $this->timeFormatter->utcHoursAgo(self::WINDOW_HOURS, $now);
         $timezone = $this->timeFormatter->storeTimezone();
         $options = $this->options($timezone, $onlyGroupIds === null) + ['since' => $since];
+        if ($this->ipNetworkFilter !== null) {
+            $options['ip_filter_enabled'] = $this->ipNetworkFilter->isEnabled();
+            $options['hidden_ip'] = $this->ipNetworkFilter->hiddenSince($since);
+        }
 
         if ($onlyGroupIds !== null) {
             $onlyGroupIds = array_values(array_filter(array_map('intval', $onlyGroupIds)));
@@ -199,6 +205,8 @@ class DigestBuilder
             'hidden_graphql' => $hidden['graphql'],
             'hidden_total' => array_sum($hidden),
             'resolved_active' => $resolvedActive,
+            'hidden_ip' => max(0, (int)($options['hidden_ip'] ?? 0)),
+            'ip_filter_enabled' => (bool)($options['ip_filter_enabled'] ?? false),
         ];
     }
 

@@ -15,10 +15,12 @@ use Magento\Store\Model\StoreManagerInterface;
 use Panth\ErrorMonitor\Helper\Config;
 use Panth\ErrorMonitor\Model\ErrorGroup;
 use Panth\ErrorMonitor\Service\BotDetector;
+use Panth\ErrorMonitor\Service\ClientIpResolver;
 use Panth\ErrorMonitor\Service\DeploymentGuard;
 use Panth\ErrorMonitor\Service\ErrorPayload;
 use Panth\ErrorMonitor\Service\ErrorRecorder;
 use Panth\ErrorMonitor\Service\IpAnonymizer;
+use Panth\ErrorMonitor\Service\IpNetworkFilter;
 use Panth\ErrorMonitor\Service\JsReasonSerializer;
 use Panth\ErrorMonitor\Service\RateLimiter;
 
@@ -35,6 +37,8 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
 
     private readonly JsReasonSerializer $reasonSerializer;
 
+    private readonly ?IpNetworkFilter $ipFilter;
+
     public function __construct(
         private readonly HttpRequest $request,
         private readonly RawFactory $rawFactory,
@@ -46,11 +50,13 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
         private readonly DeploymentGuard $deploymentGuard,
         private readonly RemoteAddress $remoteAddress,
         ?BotDetector $botDetector = null,
-        ?JsReasonSerializer $reasonSerializer = null
+        ?JsReasonSerializer $reasonSerializer = null,
+        ?IpNetworkFilter $ipFilter = null
     ) {
         $this->botDetector = $botDetector
             ?? ObjectManager::getInstance()->get(BotDetector::class);
         $this->reasonSerializer = $reasonSerializer ?? new JsReasonSerializer();
+        $this->ipFilter = $ipFilter ?? $this->defaultIpFilter();
     }
 
     public function execute()
@@ -74,19 +80,23 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
                 return $result;
             }
 
+            [$ip, $ipSource] = $this->clientIp();
+            $ipDecision = $this->ipFilter?->decide($ip) ?? IpNetworkFilter::PASS;
+
             $userAgent = $this->serverValue('HTTP_USER_AGENT');
             $isBot = $this->botDetector->isBot($userAgent);
             if ($isBot && $this->botDetector->shouldIgnore()) {
                 return $result;
             }
+            $ipBot = $ipDecision === IpNetworkFilter::BOT && !$isBot;
+            $isBot = $isBot || $ipDecision === IpNetworkFilter::BOT;
 
             $body = (string)$this->request->getContent();
             if ($body === '' || strlen($body) > $this->config->getJsMaxBodyBytes($storeId)) {
                 return $result;
             }
 
-            $ip = (string)$this->remoteAddress->getRemoteAddress();
-            if (!$this->rateLimiter->allow($ip, $this->config->getJsRateLimitPerMinute($storeId))) {
+            if (!$this->rateLimiter->allow((string)$ip, $this->config->getJsRateLimitPerMinute($storeId))) {
                 return $result;
             }
 
@@ -115,8 +125,18 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
             if ($reasonType !== '') {
                 $context['reason_type'] = $reasonType;
             }
+            if ($ipDecision === IpNetworkFilter::DROP || ($ipBot && $this->botDetector->shouldIgnore())) {
+                $this->ipFilter?->countHidden();
+                return $result;
+            }
             if ($isBot) {
                 $context['is_bot'] = true;
+            }
+            if ($ipDecision === IpNetworkFilter::BOT) {
+                $context[IpNetworkFilter::CONTEXT_FLAG] = true;
+            }
+            if ($ipSource !== ClientIpResolver::SOURCE_REMOTE_ADDR) {
+                $context['client_ip_source'] = $ipSource;
             }
 
             $this->recorder->record(new ErrorPayload(
@@ -130,7 +150,7 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
                 url: $pageUrl ?? $referer,
                 referer: $referer,
                 userAgent: $userAgent,
-                ip: $this->ipAnonymizer->process($ip ?: null, $storeId),
+                ip: $this->ipAnonymizer->process($ip, $storeId),
                 httpMethod: 'POST',
                 context: $context,
                 storeId: $storeId
@@ -140,6 +160,28 @@ class Collect implements HttpPostActionInterface, CsrfAwareActionInterface
         }
 
         return $result;
+    }
+
+    private function clientIp(): array
+    {
+        $remote = (string)$this->remoteAddress->getRemoteAddress();
+        if ($this->ipFilter === null) {
+            return [$remote !== '' ? $remote : null, ClientIpResolver::SOURCE_REMOTE_ADDR];
+        }
+        return $this->ipFilter->resolver()->resolve(
+            $remote,
+            $this->serverValue('HTTP_CF_CONNECTING_IP'),
+            $this->serverValue('HTTP_X_FORWARDED_FOR')
+        );
+    }
+
+    private function defaultIpFilter(): ?IpNetworkFilter
+    {
+        try {
+            return ObjectManager::getInstance()->get(IpNetworkFilter::class);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     private function isSameOrigin(): bool

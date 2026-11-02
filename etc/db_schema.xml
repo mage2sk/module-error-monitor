@@ -129,4 +129,16 @@
             <column name="expires_at"/>
         </index>
     </table>
+    <table name="panth_error_filter_hourly" resource="default" engine="innodb"
+           comment="Panth Error Monitor - occurrences dropped by capture filters per UTC hour">
+        <column xsi:type="timestamp" name="hour_start" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Start of the UTC hour"/>
+        <column xsi:type="varchar" name="reason" nullable="false" length="16" comment="Filter that dropped them, e.g. ip"/>
+        <column xsi:type="int" name="occurrences" unsigned="true" nullable="false" default="0"
+                comment="Occurrences dropped in this hour"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="hour_start"/>
+            <column name="reason"/>
+        </constraint>
+    </table>
 </schema>

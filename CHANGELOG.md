@@ -4,6 +4,21 @@ All notable changes to this extension are documented here. The format
 is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] - 2026-11-02
+
+### Upgrade notes
+- Run `bin/magento setup:upgrade`. One table is added: `panth_error_filter_hourly` (occurrences dropped by the IP / network filter per UTC hour). No refingerprint run is needed.
+- The stored occurrence IP and the storefront collector's per-IP rate limit now use the client IP from `CF-Connecting-IP` or `X-Forwarded-For` when the request comes from a trusted proxy. Set "Trusted Proxy IPs / Networks" to an empty value to always use `REMOTE_ADDR` as in 1.7.x.
+
+### Added
+- "Ignore Errors from These IPs / Networks" (Noise Filters, default No) with an editable list of IPv4/IPv6 addresses and CIDR ranges. It applies to the storefront collector and to PHP errors raised during a web request, so crawlers that send a normal browser User-Agent can be filtered. The list ships with the Baidu crawler networks `116.179.0.0/16` and `220.181.0.0/16`, but is only used when the setting is Yes. Invalid lines are rejected on save; an invalid line that reaches the configuration another way is skipped and never stops capture.
+- "Treat These Networks as Bots" (default No): matching requests are handled like a bot User-Agent instead of being dropped by the IP filter, so with bots kept they are stored with the `is_bot` flag, count in the "Bots: N%" share and bot-only groups are left out of the email.
+- "Trusted Proxy IPs / Networks": the client IP is read from `CF-Connecting-IP`, then from `X-Forwarded-For` (nearest public address that is not a trusted proxy), only when `REMOTE_ADDR` is in this list; otherwise `REMOTE_ADDR` is used. The default list holds Cloudflare's published IPv4 and IPv6 ranges and the private and loopback ranges. The occurrence context records `client_ip_source` when a header was used.
+- The summary email footer shows "N hidden by IP/network filter" with the number of occurrences dropped by the filter in the last 24 hours (hourly counters, so the window starts at the beginning of the first hour). The daily cleanup cron removes these counters after 35 days.
+
+### Fixed
+- An exception that Magento logs twice in one web request (the bare message from `Bootstrap::run()` and the exception with file, line and trace from the exception handler, for example "Redis session exceeded concurrent connections") is recorded as one group instead of two. The record with file, line and stack trace is kept.
+
 ## [1.7.1] - 2026-10-30
 
 ### Changed

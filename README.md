@@ -65,6 +65,10 @@ Check that the module is enabled:
 bin/magento module:status Panth_ErrorMonitor
 ```
 
+### Upgrading to 1.8.0
+
+Run `bin/magento setup:upgrade`. It adds the table `panth_error_filter_hourly` (occurrences dropped by the IP / network filter per hour; rows older than 35 days are removed by the daily cleanup cron). No other table changes, no refingerprint run is needed. The IP / network filter is off after the upgrade. The stored occurrence IP and the collector rate limit now use the client IP from `CF-Connecting-IP` / `X-Forwarded-For` when the request comes from a trusted proxy (see "Client IP behind a reverse proxy"); set "Trusted Proxy IPs / Networks" to an empty value to keep the 1.7.x behaviour.
+
 ### Upgrading from 1.6.x
 
 ```bash
@@ -106,6 +110,10 @@ Default behaviour after installation: PHP and JavaScript capture are on, no emai
 | Leave Bot-only Groups out of the Summary Email | Yes | A group whose occurrences in the last 24 hours all came from bots (stored `is_bot` flag or a matching User-Agent) is not listed; the footer counts it. |
 | Ignore Known Browser and Third-party Noise | Yes | Applies the Noise Patterns below at capture time and hides matching older groups from the email. |
 | Noise Patterns | See below | One rule per line, a case-insensitive regular expression tested against the message. Prefixes: `file:` (file / source URL), `stack:` (stack trace), `source:` (file or stack trace), `any:` (message, file and stack), `nostack:` (message, only when there is no stack trace). Conditions joined with ` && ` must all match. Shown only when the switch above is Yes. |
+| Ignore Errors from These IPs / Networks | No | Storefront JS reports, and PHP errors raised during a web request, whose client IP is in the list below are dropped. The number of dropped occurrences is counted per hour and shown in the summary email footer as "N hidden by IP/network filter". |
+| IPs / Networks | `116.179.0.0/16`, `220.181.0.0/16` (one per line) | One IPv4 or IPv6 address or CIDR range per line, for example `116.179.0.0/16` or `2600:3c01::/32`. The default entries are Baidu crawler networks that send a normal browser User-Agent, so the bot patterns do not catch them. The list ships filled in, but it is only used when the switch above is Yes. Invalid lines are rejected when the configuration is saved; an invalid line that reaches the configuration another way (for example `config:set`) is skipped and capture keeps working. |
+| Treat These Networks as Bots | No | When Yes, matching requests are handled like a bot User-Agent instead of being dropped by this filter: with "Ignore Errors from Bots/Crawlers" = Yes they are still dropped and counted in the footer; with No they are stored with `"is_bot": true` and `"ip_network_match": true`, count in the "Bots: N%" share, and bot-only groups are left out of the email when that setting is Yes. |
+| Trusted Proxy IPs / Networks | Cloudflare's published IPv4 and IPv6 ranges, plus `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `::1/128`, `fc00::/7` | See "Client IP behind a reverse proxy". Same line format and validation as above. An empty list means the headers are never read. |
 
 Default noise patterns:
 
@@ -174,6 +182,8 @@ Config paths: `panth_errormonitor/general/enabled`, `panth_errormonitor/general/
 
 `Panth\ErrorMonitor\Logger\DbHandler` is added to the handler list of `Magento\Framework\Logger\Monolog` in `etc/di.xml` at Monolog level NOTICE, so it sees every record the system logger receives at notice level or above, including uncaught exceptions. For each record it checks, in this order: the master switch and "Capture PHP Exceptions", whether capture is suspended (see below), whether the message is empty, whether the record's level is at or above "Minimum Severity to Capture", and whether the message contains the module's own marker `[PanthErrorMonitor]` (its own log lines are never recorded).
 
+During a web request Magento often logs one exception twice: `Bootstrap::run()` writes the bare message (`$logger->error($e->getMessage())`, no context) and the exception handler then logs the exception itself with its file, line and trace. Since 1.8.0 these are recorded as one group. A bare `error` line without context on a generic channel (`main`, `report`, `error`, `exception`) is held back until the next record of the same request: if that record carries an exception with the same message, only the exception (with file, line and stack trace) is recorded; otherwise the held line is recorded before the next record, when the handler is closed, or at the end of the request. A bare line that arrives after an exception with the same message in the same request is not recorded. Other records, and every record on the command line and in cron, are written immediately as before.
+
 The same `handlers` argument also lists Magento's own handlers `system` (`Magento\Framework\Logger\Handler\System`, var/log/system.log and, for records with an exception, var/log/exception.log), `debug` (`Magento\Framework\Logger\Handler\Debug`, var/log/debug.log when debug logging is enabled) and `syslog` (`Magento\Framework\Logger\Handler\Syslog`, only when syslog logging is enabled). Magento declares these in app/etc/di.xml, and a module di.xml that sets the `handlers` argument of this type replaces that list instead of merging with it, so they have to be repeated for file logging to keep working. Items added by other modules in their own di.xml are still merged by name.
 
 If the record carries a `Throwable` in its context, the exception class, message, file, line and trace are used. Argument values are removed from every stored trace frame (`#0 file(line): Class->method()`), whatever the PHP setting `zend.exception_ignore_args` is, so passwords, tokens or customer data passed to a function never reach the database or the summary email. Traces stored before version 1.6.0 keep their arguments until they are pruned by the event retention. Otherwise the handler splits a `Stack trace:` section out of the message, or, for messages that are only a trace starting with `#0`, builds a short message from the first frame. The error type is mined from the message with a set of patterns (exception class names, JS error names, PHP `Warning` / `Notice` / `Deprecated Functionality` prefixes, Elasticsearch `caused_by` / `root_cause` types, invalid template file module names); if none matches, the Monolog channel name is used unless it is a generic one (`main`, `report`, `error`, `exception`), in which case the type is `error`. The request URI, referer, user agent, HTTP method and (subject to the Privacy settings) the client IP from `$_SERVER` are stored on the event row. PHP events are stored with store ID 0.
@@ -206,7 +216,15 @@ Only `http` and `https` page URLs and referers are stored; any other scheme (for
 
 ### Client IP behind a reverse proxy
 
-The per-IP rate limit and the stored IP use Magento's `Magento\Framework\HTTP\PhpEnvironment\RemoteAddress`. Behind a reverse proxy or load balancer (Traefik, Varnish, nginx, a CDN) every request arrives from the proxy address, so all visitors would share one rate-limit budget. Tell Magento which header the proxy sets, in a small project module or in `app/etc/di.xml`:
+The module resolves the client IP itself for the IP / network filter, the per-IP rate limit of the storefront collector and the stored occurrence IP:
+
+1. The connecting address is `REMOTE_ADDR` (for the storefront collector, the value returned by Magento's `RemoteAddress`, so the configuration below still applies).
+2. Only when that address is in "Trusted Proxy IPs / Networks" are headers read: first `CF-Connecting-IP`, then `X-Forwarded-For`. In `X-Forwarded-For` the entries are read from right to left (nearest proxy first), trusted proxy addresses and private or reserved addresses are skipped, and the first remaining public address is used. Reading from the right means a value the visitor put at the start of the header is not used while a trusted proxy appended the real address.
+3. Otherwise, or when no header holds a usable address, `REMOTE_ADDR` is used.
+
+When a header was used, the occurrence context stores `client_ip_source` (`cf-connecting-ip` or `x-forwarded-for`). The "Store IP" and "Anonymise IP" privacy settings still apply to the stored value; the filter itself compares the full address in memory. The default trusted list holds Cloudflare's published ranges (from `https://www.cloudflare.com/ips/`, update them when Cloudflare changes the list) and the private and loopback ranges. Remove the private ranges when visitors can reach PHP through a local proxy that passes these headers through unchanged.
+
+Before 1.8.0 the rate limit and the stored IP used Magento's `Magento\Framework\HTTP\PhpEnvironment\RemoteAddress` only. Behind a reverse proxy or load balancer (Traefik, Varnish, nginx, a CDN) every request arrives from the proxy address, so all visitors would share one rate-limit budget. Tell Magento which header the proxy sets, in a small project module or in `app/etc/di.xml`:
 
 ```xml
 <type name="Magento\Framework\HTTP\PhpEnvironment\RemoteAddress">
@@ -221,7 +239,7 @@ The per-IP rate limit and the stored IP use Magento's `Magento\Framework\HTTP\Ph
 </type>
 ```
 
-Only add the header when the proxy always overwrites it, and list the proxy addresses in `trustedProxies` where your Magento version supports it; otherwise a visitor can send a forged `X-Forwarded-For`. The module never reads `X-Forwarded-For` by itself. The counters are kept in `panth_error_rate_limit` and are incremented atomically, so parallel requests cannot exceed the limit.
+Only add the header when the proxy always overwrites it, and list the proxy addresses in `trustedProxies` where your Magento version supports it; otherwise a visitor can send a forged `X-Forwarded-For`. The module reads `CF-Connecting-IP` and `X-Forwarded-For` only from the trusted proxies listed above. The counters are kept in `panth_error_rate_limit` and are incremented atomically, so parallel requests cannot exceed the limit.
 
 ### Storage caps
 
