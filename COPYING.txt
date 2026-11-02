@@ -1,0 +1,6 @@
+Magento 2 Error Monitor
+
+Copyright (c) 2026 Kishan Savaliya (Panth Infotech)
+
+Magento 2 Error Monitor is free and open-source software released under the MIT License.
+See LICENSE.txt for the full license text.

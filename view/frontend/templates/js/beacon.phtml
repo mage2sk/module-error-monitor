@@ -1,0 +1,16 @@
+<?php
+/**
+ * Copyright © Panth Infotech. All rights reserved.
+ *
+ * Renders an inert JSON config block + loads the external, CSP-safe collector.
+ * No inline JavaScript is emitted, so this works under a strict
+ * Content-Security-Policy (script-src without 'unsafe-inline').
+ *
+ * @var \Panth\ErrorMonitor\Block\Js\Beacon $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+?>
+<?php if ($block->isCaptureEnabled()): ?>
+    <script type="application/json" id="panth-em-config"><?= /* @noEscape */ $block->getConfigJson() ?></script>
+    <script src="<?= $escaper->escapeUrl($block->getViewFileUrl('Panth_ErrorMonitor::js/error-monitor.js')) ?>" defer></script>
+<?php endif; ?>
