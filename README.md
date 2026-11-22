@@ -65,6 +65,10 @@ Check that the module is enabled:
 bin/magento module:status Panth_ErrorMonitor
 ```
 
+### Upgrading to 1.8.3
+
+Run `bin/magento setup:upgrade` and `bin/magento cache:flush`. There are no database changes. The deploy detection now watches `generated/` only in production mode, `panth:errormonitor:resume` also ends an active deploy auto-pause, and the email subject trims the store view name.
+
 ### Upgrading to 1.8.2
 
 Run `bin/magento setup:upgrade` and `bin/magento cache:flush`. There are no database changes. Grid row actions Resolve and Ignore now ask for confirmation, and in developer mode the deploy detection only watches `pub/static/deployed_version.txt`.
@@ -107,8 +111,8 @@ Default behaviour after installation: PHP and JavaScript capture are on, no emai
 | Setting | Default | What it does |
 |---|---|---|
 | Enable Error Monitor | Yes | Master switch. When off, nothing is captured and no email is sent. |
-| Auto-pause After Deploy (minutes) | 5 | Capture is suspended for this many minutes after a strictly newer modification time is seen on `pub/static/deployed_version.txt`, `generated/code` or `generated/metadata` (in developer mode only `pub/static/deployed_version.txt`, because Magento writes `generated/` on almost every request there). Accepts 0 to 120; the code caps the value at 120. 0 disables auto-pause. |
-| Auto-Filter Sibling Module Operational Alerts | Yes | Drops log messages starting with `[Panth<Name>]` followed by `BLOCKED`, `REJECTED`, `DENIED`, `REFUSED`, `DROPPED` or `QUARANTINED`. |
+| Auto-pause After Deploy (minutes) | 5 | Capture is suspended for this many minutes after a strictly newer modification time is seen on `pub/static/deployed_version.txt`, `generated/code` or `generated/metadata` (outside production mode only `pub/static/deployed_version.txt`, because developer and default mode write `generated/` on almost every request). Accepts 0 to 120; the code caps the value at 120. 0 disables auto-pause. |
+| Auto-Filter Sibling Module Operational Alerts | Yes | Drops log messages starting with `[Panth<Name>]` followed by `BLOCKED`, `REJECTED`, `DENIED`, `REFUSED`, `DROPPED` or `QUARANTINED`, for example the Malware Scanner's blocked upload lines. Set it to No to store them in the Error Log. |
 | Ignore Errors Matching | Six lines: `Script error for`, `ChunkLoadError`, `Loading chunk`, `ResizeObserver loop limit exceeded`, `ResizeObserver loop completed with undelivered notifications.`, `Non-Error promise rejection captured` | One substring per line, matched case-insensitively against the message, file path, error type and stack trace. Matching errors are dropped before they are stored. If this field is empty, the legacy path `panth_errormonitor/js_capture/ignore_patterns` is read instead. |
 | Max Stored Occurrences per Error Group | 50 | See "Storage caps" below. 0 = no limit. |
 | When the Occurrence Limit Is Reached | Keep the oldest rows | `oldest` (default, the 1.6.x behaviour): no stored row is deleted; further occurrences only raise the counter, Last Seen and the hourly counters. `newest`: the oldest rows of the group (by time) are deleted so the newest stack traces are kept. The daily summary counts from hourly counters in both modes. |
@@ -309,7 +313,7 @@ Coalescing (`Panth\ErrorMonitor\Service\CaptureThrottle`) uses the Magento cache
 
 - Magento maintenance mode is on;
 - an explicit pause set with `bin/magento panth:errormonitor:pause` has not expired (flag `panth_errormonitor_capture_paused_until`);
-- a deploy was detected: the modification times of `pub/static/deployed_version.txt`, `generated/code` and `generated/metadata` (developer mode: `pub/static/deployed_version.txt` only) are compared with the last seen values stored in the flag `panth_errormonitor_deploy_mtimes`. A strictly newer time starts a pause of "Auto-pause After Deploy (minutes)" from that time (flag `panth_errormonitor_autopause_until`). The first observation only records a baseline.
+- a deploy was detected: the modification times of `pub/static/deployed_version.txt`, `generated/code` and `generated/metadata` (developer and default mode: `pub/static/deployed_version.txt` only) are compared with the last seen values stored in the flag `panth_errormonitor_deploy_mtimes`. A strictly newer time starts a pause of "Auto-pause After Deploy (minutes)" from that time (flag `panth_errormonitor_autopause_until`). The first observation only records a baseline.
 
 `bin/magento panth:errormonitor:status` prints every gate, the watched paths with their current and last-seen times, and the number of events recorded in the last hour and 24 hours.
 
@@ -341,7 +345,7 @@ Both jobs are in the `default` cron group.
 | `bin/magento panth:errormonitor:cleanup` | | Runs the retention cleanup now and prints how many events, resolved groups and unresolved groups were deleted. |
 | `bin/magento panth:errormonitor:send-summary` | `--dry-run` | Builds and sends the summary email now, ignoring the send-hour and once-per-day gates. Requires alerts enabled and valid recipients. `--dry-run` prints the groups, counts, times and hidden-group numbers without sending. |
 | `bin/magento panth:errormonitor:pause` | `--minutes` / `-m` (default 60) | Suspends capture for the given number of minutes; the pause expires on its own. |
-| `bin/magento panth:errormonitor:resume` | | Clears the explicit pause flag. Capture stays suspended while maintenance mode is on. |
+| `bin/magento panth:errormonitor:resume` | | Clears the explicit pause flag and ends an active deploy auto-pause (the deploy baseline is kept). Capture stays suspended while maintenance mode is on. |
 | `bin/magento panth:errormonitor:refingerprint` (alias `panth:error-monitor:refingerprint`) | `--dry-run` | Recomputes the fingerprint of every group with the current rules (and maps preprocessed template paths) and merges groups that now describe the same error: events and hourly counters move to the earliest group, occurrence counts are summed, the earliest first seen and latest last seen are kept, the most severe severity wins and the status becomes New if any merged group was New, otherwise Ignored if any was Ignored, otherwise Resolved; the merged group is then trimmed to "Max Stored Occurrences per Error Group" following "When the Occurrence Limit Is Reached". Stored GraphQL client errors (Magento GraphQL input, authorization, authentication and no-such-entity exceptions, GraphQL validation errors such as `Cannot query field`, and `Report ID` wrappers of expired customer tokens) are set to notice unless "GraphQL Client Errors" is "Record". The groups are re-read with `SELECT ... FOR UPDATE` inside one transaction, so occurrences recorded at the same moment are not lost; on an error everything is rolled back. Idempotent (a second run changes nothing). Run it once after upgrading to 1.7.0. `--dry-run` prints the plan, including the real number of occurrences that would be moved and trimmed. Sensitive `config:set` / `config:sensitive:set` values in a stored command line are masked whatever the option order. |
 | `bin/magento panth:errormonitor:regroup` | `--dry-run` | Deprecated alias kept for scripts: runs `panth:errormonitor:refingerprint` and prints the older summary line. The 1.6.x regrouper is only used by the old `RegroupErrorsV2` / `RegroupErrorsV3` data patches. |
 | `bin/magento panth:errormonitor:status` | `--reset-auto-detect` | Prints every capture gate, the suspension state, the deploy-marker modification times, filter settings and recent capture counts. `--reset-auto-detect` clears the deploy baseline and auto-pause flags first. |

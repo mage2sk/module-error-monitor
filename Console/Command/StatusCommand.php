@@ -116,7 +116,8 @@ class StatusCommand extends Command
         $output->writeln('');
 
         $output->writeln('<comment>== Filters ==</comment>');
-        $this->row($output, 'Ecosystem-alert filter on', $this->yn($filterEco));
+        $this->row($output, 'Ecosystem-alert filter on', $this->yn($filterEco)
+            . ($filterEco ? ' ([Panth*] BLOCKED/REJECTED lines are not stored)' : ''));
         $this->row($output, 'Ignore-patterns lines', (string)$ignoreLines);
         $output->writeln('');
 
@@ -191,8 +192,9 @@ class StatusCommand extends Command
 
     private function missingLabel(string $path, array $deploy): string
     {
-        if (!empty($deploy['developer_mode']) && str_contains($path, '/generated/')) {
-            return '(not watched: dev)';
+        if (array_key_exists('generated_watched', $deploy) && !$deploy['generated_watched']
+            && str_contains($path, '/generated/')) {
+            return '(not watched: ' . ($deploy['app_mode'] ?? 'mode') . ')';
         }
         return '(missing)';
     }

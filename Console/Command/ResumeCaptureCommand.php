@@ -30,6 +30,9 @@ class ResumeCaptureCommand extends Command
         $status = $this->deploymentGuard->status();
         if ($status['maintenance']) {
             $output->writeln('<comment>Pause flag cleared, but capture is still suspended because MaintenanceMode is ON.</comment>');
+        } elseif (!empty($status['suspended'])) {
+            $output->writeln('<comment>Pause flag cleared, but capture is still suspended: '
+                . ($status['auto_pause_reason'] ?: 'deploy auto-pause') . '</comment>');
         } else {
             $output->writeln('<info>Error Monitor capture resumed.</info>');
         }

@@ -11,11 +11,15 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class ResumeCaptureCommandTest extends TestCase
 {
-    private function tester(bool $maintenance): CommandTester
+    private function tester(bool $maintenance, bool $suspended = false): CommandTester
     {
         $guard = $this->createMock(DeploymentGuard::class);
         $guard->expects($this->once())->method('resume');
-        $guard->expects($this->once())->method('status')->willReturn(['maintenance' => $maintenance]);
+        $guard->expects($this->once())->method('status')->willReturn([
+            'maintenance' => $maintenance,
+            'suspended' => $maintenance || $suspended,
+            'auto_pause_reason' => $suspended ? 'deploy detected (deployed_version.txt)' : '',
+        ]);
         return new CommandTester(new ResumeCaptureCommand($guard));
     }
 
@@ -31,6 +35,14 @@ class ResumeCaptureCommandTest extends TestCase
         $tester = $this->tester(true);
         $this->assertSame(Command::SUCCESS, $tester->execute([]));
         $this->assertStringContainsString('still suspended because MaintenanceMode is ON', $tester->getDisplay());
+        $this->assertStringNotContainsString('capture resumed.', $tester->getDisplay());
+    }
+
+    public function testWarnsWhenANewDeployIsDetectedDuringResume(): void
+    {
+        $tester = $this->tester(false, true);
+        $this->assertSame(Command::SUCCESS, $tester->execute([]));
+        $this->assertStringContainsString('still suspended: deploy detected (deployed_version.txt)', $tester->getDisplay());
         $this->assertStringNotContainsString('capture resumed.', $tester->getDisplay());
     }
 

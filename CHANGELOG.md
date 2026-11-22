@@ -4,6 +4,20 @@ All notable changes to this extension are documented here. The format
 is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.3] - 2026-11-22
+
+### Upgrade notes
+- Run `bin/magento setup:upgrade` and `bin/magento cache:flush`. There are no database changes. In production mode also run `bin/magento setup:di:compile`.
+
+### Fixed
+- Default mode also generates classes on demand and writes `generated/` on almost every request, so the deploy detection kept capture paused there too. `generated/code` and `generated/metadata` are now only watched in production mode. `panth:errormonitor:status` shows them as "(not watched: <mode>)".
+- `panth:errormonitor:status` showed "Auto-pause (deploy detect) YES until ..." from an old flag while auto-pause was off (window 0) and capture was active. It now only shows a time when the auto-pause is in effect.
+- `panth:errormonitor:resume` said capture was resumed but left an active deploy auto-pause in place. It now also ends the auto-pause. The deploy baseline is kept, so the same deploy does not pause capture again. If a new deploy is detected while it runs, it says capture is still suspended and why.
+- The email subject showed a space before the bracket when the store view name ended with a space, for example `[Main Store ] Error Monitor: ...`. The name is now trimmed.
+
+### Changed
+- `panth:errormonitor:status` notes next to "Ecosystem-alert filter on" that `[Panth*] BLOCKED/REJECTED` log lines are not stored. Turn off "Auto-Filter Sibling Module Operational Alerts" to store blocked requests from sibling modules in the Error Log.
+
 ## [1.8.2] - 2026-11-22
 
 ### Upgrade notes

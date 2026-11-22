@@ -137,7 +137,8 @@ class EmailNotifier
     private function siteName(): string
     {
         try {
-            return (string)($this->storeManager->getDefaultStoreView()?->getName() ?: 'Magento');
+            $name = trim((string)$this->storeManager->getDefaultStoreView()?->getName());
+            return $name !== '' ? $name : 'Magento';
         } catch (\Throwable $e) {
             return 'Magento';
         }
