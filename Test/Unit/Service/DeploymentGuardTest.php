@@ -5,6 +5,7 @@ namespace Panth\ErrorMonitor\Test\Unit\Service;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\MaintenanceMode;
+use Magento\Framework\App\State as AppState;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\FlagManager;
 use Panth\ErrorMonitor\Service\DeploymentGuard;
@@ -27,6 +28,8 @@ class DeploymentGuardTest extends TestCase
     private bool $rootThrows = false;
 
     private $windowMinutes = '5';
+
+    private string $mode = AppState::MODE_PRODUCTION;
 
     protected function setUp(): void
     {
@@ -99,7 +102,10 @@ class DeploymentGuardTest extends TestCase
         $scope = $this->createStub(ScopeConfigInterface::class);
         $scope->method('getValue')->willReturnCallback(fn () => $this->windowMinutes);
 
-        return new DeploymentGuard($maintenance, $flagManager, $directoryList, $scope);
+        $appState = $this->createStub(AppState::class);
+        $appState->method('getMode')->willReturnCallback(fn (): string => $this->mode);
+
+        return new DeploymentGuard($maintenance, $flagManager, $directoryList, $scope, $appState);
     }
 
     private function baseline(int $mtime): void
@@ -313,5 +319,50 @@ class DeploymentGuardTest extends TestCase
     public function testDefaultAutoPauseMinutes(): void
     {
         $this->assertSame(5, DeploymentGuard::defaultAutoPauseMinutes());
+    }
+
+    public function testDeveloperModeIgnoresGeneratedFolderChanges(): void
+    {
+        $this->mode = AppState::MODE_DEVELOPER;
+        $this->baseline(time() - 3600);
+        touch($this->root . '/pub/static/deployed_version.txt', time() - 3600);
+        touch($this->root . '/generated/code', time() - 5);
+        touch($this->root . '/generated/metadata', time() - 5);
+
+        $guard = $this->guard();
+
+        $this->assertFalse($guard->isCaptureSuspended());
+        $this->assertArrayNotHasKey(DeploymentGuard::AUTO_PAUSE_UNTIL_FLAG, $this->flags);
+        $this->assertSame([$this->root . '/pub/static/deployed_version.txt'], array_keys($guard->status()['watched_mtimes']));
+    }
+
+    public function testDeveloperModeStillPausesOnStaticDeploy(): void
+    {
+        $this->mode = AppState::MODE_DEVELOPER;
+        $this->baseline(time() - 3600);
+        touch($this->root . '/pub/static/deployed_version.txt', time() - 5);
+
+        $this->assertTrue($this->guard()->isCaptureSuspended());
+    }
+
+    public function testProductionModeStillWatchesGeneratedCode(): void
+    {
+        $this->baseline(time() - 3600);
+        touch($this->root . '/pub/static/deployed_version.txt', time() - 3600);
+        touch($this->root . '/generated/metadata', time() - 3600);
+        touch($this->root . '/generated/code', time() - 5);
+
+        $this->assertTrue($this->guard()->isCaptureSuspended());
+    }
+
+    public function testDefaultModeStillWatchesGeneratedCode(): void
+    {
+        $this->mode = AppState::MODE_DEFAULT;
+        $this->baseline(time() - 3600);
+        touch($this->root . '/pub/static/deployed_version.txt', time() - 3600);
+        touch($this->root . '/generated/metadata', time() - 3600);
+        touch($this->root . '/generated/code', time() - 5);
+
+        $this->assertTrue($this->guard()->isCaptureSuspended());
     }
 }

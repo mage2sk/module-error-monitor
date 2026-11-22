@@ -45,11 +45,19 @@ class Actions extends Column
                 'href' => $this->urlBuilder->getUrl(self::URL_RESOLVE, ['group_id' => $id]),
                 'label' => __('Resolve'),
                 'post' => true,
+                'confirm' => [
+                    'title' => __('Resolve error'),
+                    'message' => __('Mark this error group as resolved?'),
+                ],
             ];
             $item[$name]['ignore'] = [
                 'href' => $this->urlBuilder->getUrl(self::URL_IGNORE, ['group_id' => $id]),
                 'label' => __('Ignore'),
                 'post' => true,
+                'confirm' => [
+                    'title' => __('Ignore error'),
+                    'message' => __('Ignore this error group? New occurrences will not be reported.'),
+                ],
             ];
             $item[$name]['delete'] = [
                 'href' => $this->urlBuilder->getUrl(self::URL_DELETE, ['group_id' => $id]),

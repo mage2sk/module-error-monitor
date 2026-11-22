@@ -5,6 +5,7 @@ namespace Panth\ErrorMonitor\Service;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\MaintenanceMode;
+use Magento\Framework\App\State as AppState;
 use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\FlagManager;
 
@@ -28,7 +29,8 @@ class DeploymentGuard
         private readonly MaintenanceMode $maintenanceMode,
         private readonly FlagManager $flagManager,
         private readonly DirectoryList $directoryList,
-        private readonly ScopeConfigInterface $scopeConfig
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly AppState $appState
     ) {
     }
 
@@ -126,11 +128,13 @@ class DeploymentGuard
         } catch (\Throwable $e) {
             return [];
         }
-        $candidates = [
-            $root . '/pub/static/deployed_version.txt',
-            $root . '/generated/code',
-            $root . '/generated/metadata',
-        ];
+        $candidates = [$root . '/pub/static/deployed_version.txt'];
+        // In developer mode Magento writes generated/ on almost every request,
+        // which kept capture paused most of the time.
+        if (!$this->isDeveloperMode()) {
+            $candidates[] = $root . '/generated/code';
+            $candidates[] = $root . '/generated/metadata';
+        }
         $out = [];
         foreach ($candidates as $path) {
             if (!file_exists($path)) {
@@ -142,6 +146,15 @@ class DeploymentGuard
             }
         }
         return $out;
+    }
+
+    private function isDeveloperMode(): bool
+    {
+        try {
+            return $this->appState->getMode() === AppState::MODE_DEVELOPER;
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     private function loadLastSeenMtimes(): array
@@ -237,6 +250,7 @@ class DeploymentGuard
             'watched_mtimes'    => $watched,
             'last_seen_mtimes'  => $lastSeen,
             'window_minutes'    => $this->resolveWindowMinutes(),
+            'developer_mode'    => $this->isDeveloperMode(),
             'suspended'         => $maintenance || ($paused > time()) || $autoSuspended,
         ];
     }

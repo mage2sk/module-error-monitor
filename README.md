@@ -65,6 +65,10 @@ Check that the module is enabled:
 bin/magento module:status Panth_ErrorMonitor
 ```
 
+### Upgrading to 1.8.2
+
+Run `bin/magento setup:upgrade` and `bin/magento cache:flush`. There are no database changes. Grid row actions Resolve and Ignore now ask for confirmation, and in developer mode the deploy detection only watches `pub/static/deployed_version.txt`.
+
 ### Upgrading to 1.8.1
 
 Run `bin/magento setup:upgrade` and `bin/magento cache:flush`. There are no database changes.
@@ -103,7 +107,7 @@ Default behaviour after installation: PHP and JavaScript capture are on, no emai
 | Setting | Default | What it does |
 |---|---|---|
 | Enable Error Monitor | Yes | Master switch. When off, nothing is captured and no email is sent. |
-| Auto-pause After Deploy (minutes) | 5 | Capture is suspended for this many minutes after a strictly newer modification time is seen on `pub/static/deployed_version.txt`, `generated/code` or `generated/metadata`. Accepts 0 to 120; the code caps the value at 120. 0 disables auto-pause. |
+| Auto-pause After Deploy (minutes) | 5 | Capture is suspended for this many minutes after a strictly newer modification time is seen on `pub/static/deployed_version.txt`, `generated/code` or `generated/metadata` (in developer mode only `pub/static/deployed_version.txt`, because Magento writes `generated/` on almost every request there). Accepts 0 to 120; the code caps the value at 120. 0 disables auto-pause. |
 | Auto-Filter Sibling Module Operational Alerts | Yes | Drops log messages starting with `[Panth<Name>]` followed by `BLOCKED`, `REJECTED`, `DENIED`, `REFUSED`, `DROPPED` or `QUARANTINED`. |
 | Ignore Errors Matching | Six lines: `Script error for`, `ChunkLoadError`, `Loading chunk`, `ResizeObserver loop limit exceeded`, `ResizeObserver loop completed with undelivered notifications.`, `Non-Error promise rejection captured` | One substring per line, matched case-insensitively against the message, file path, error type and stack trace. Matching errors are dropped before they are stored. If this field is empty, the legacy path `panth_errormonitor/js_capture/ignore_patterns` is read instead. |
 | Max Stored Occurrences per Error Group | 50 | See "Storage caps" below. 0 = no limit. |
@@ -305,7 +309,7 @@ Coalescing (`Panth\ErrorMonitor\Service\CaptureThrottle`) uses the Magento cache
 
 - Magento maintenance mode is on;
 - an explicit pause set with `bin/magento panth:errormonitor:pause` has not expired (flag `panth_errormonitor_capture_paused_until`);
-- a deploy was detected: the modification times of `pub/static/deployed_version.txt`, `generated/code` and `generated/metadata` are compared with the last seen values stored in the flag `panth_errormonitor_deploy_mtimes`. A strictly newer time starts a pause of "Auto-pause After Deploy (minutes)" from that time (flag `panth_errormonitor_autopause_until`). The first observation only records a baseline.
+- a deploy was detected: the modification times of `pub/static/deployed_version.txt`, `generated/code` and `generated/metadata` (developer mode: `pub/static/deployed_version.txt` only) are compared with the last seen values stored in the flag `panth_errormonitor_deploy_mtimes`. A strictly newer time starts a pause of "Auto-pause After Deploy (minutes)" from that time (flag `panth_errormonitor_autopause_until`). The first observation only records a baseline.
 
 `bin/magento panth:errormonitor:status` prints every gate, the watched paths with their current and last-seen times, and the number of events recorded in the last hour and 24 hours.
 
