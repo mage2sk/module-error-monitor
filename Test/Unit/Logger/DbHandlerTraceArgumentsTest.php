@@ -51,7 +51,6 @@ class DbHandlerTraceArgumentsTest extends TestCase
         $r = new \ReflectionClass(DbHandler::class);
         $handler = $r->newInstanceWithoutConstructor();
         $m = new \ReflectionMethod(DbHandler::class, 'stripTraceArguments');
-        $m->setAccessible(true);
         return $m->invoke($handler, $stack);
     }
 }

@@ -49,7 +49,6 @@ TRACE;
     {
         $h = $this->makeReflectionHandler();
         $m = new \ReflectionMethod(DbHandler::class, 'synthesizeMessageFromTrace');
-        $m->setAccessible(true);
         return $m->invoke($h, $stack);
     }
 
@@ -57,7 +56,6 @@ TRACE;
     {
         $h = $this->makeReflectionHandler();
         $m = new \ReflectionMethod(DbHandler::class, 'topFrameLocation');
-        $m->setAccessible(true);
         return $m->invoke($h, $stack);
     }
 

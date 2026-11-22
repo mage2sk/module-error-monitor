@@ -166,6 +166,20 @@ class StatusCommandTest extends TestCase
         $this->assertStringContainsString('Tip: --reset-auto-detect', $out);
     }
 
+    public function testGeneratedMarkersAreShownAsNotWatchedInDeveloperMode(): void
+    {
+        $this->status['developer_mode'] = true;
+        $this->status['watched_mtimes'] = ['/root/pub/static/deployed_version.txt' => time() - 60];
+        $this->status['last_seen_mtimes'] = ['/root/generated/code' => 1767225600];
+        $tester = $this->tester();
+
+        $tester->execute([]);
+        $out = $tester->getDisplay();
+
+        $this->assertMatchesRegularExpression('/\/root\/generated\/code\s+\(not watched: dev\)/', $out);
+        $this->assertStringNotContainsString('(missing)', $out);
+    }
+
     public function testDatabaseFailureIsReportedInline(): void
     {
         $this->dbFails = true;

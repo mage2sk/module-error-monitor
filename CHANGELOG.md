@@ -4,6 +4,15 @@ All notable changes to this extension are documented here. The format
 is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.2] - 2026-11-22
+
+### Upgrade notes
+- Run `bin/magento setup:upgrade` and `bin/magento cache:flush`. There are no database changes. In production mode also run `bin/magento setup:di:compile`.
+
+### Fixed
+- Resolve and Ignore in the Error Log row menu opened the action as a plain link and showed a 404 page, because the controllers only accept POST. Both now ask for confirmation and send a POST request with the admin form key, like Delete.
+- In developer mode Magento writes `generated/code` and `generated/metadata` on almost every request, so the deploy detection kept capture paused most of the time. In developer mode only `pub/static/deployed_version.txt` is now watched. Production and default mode are unchanged. `panth:errormonitor:status` shows the skipped paths as "(not watched: dev)".
+
 ## [1.8.1] - 2026-11-02
 
 ### Upgrade notes

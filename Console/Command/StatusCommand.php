@@ -107,7 +107,7 @@ class StatusCommand extends Command
                 $seen = $deploy['last_seen_mtimes'][$path] ?? 0;
                 $output->writeln(
                     '  ' . str_pad($this->shorten($path, 60), 60) . '  '
-                    . str_pad($cur ? gmdate('Y-m-d H:i:s', $cur) : '(missing)', 22) . '  '
+                    . str_pad($cur ? gmdate('Y-m-d H:i:s', $cur) : $this->missingLabel($path, $deploy), 22) . '  '
                     . str_pad($seen ? gmdate('Y-m-d H:i:s', $seen) : '(none)', 22) . '  '
                     . ($cur ? $this->humanAge($now - $cur) : '-')
                 );
@@ -187,5 +187,13 @@ class StatusCommand extends Command
                 ->from($table, [new \Magento\Framework\DB\Sql\Expression('COUNT(*)')])
                 ->where('created_at >= ?', gmdate('Y-m-d H:i:s', $sinceEpoch))
         );
+    }
+
+    private function missingLabel(string $path, array $deploy): string
+    {
+        if (!empty($deploy['developer_mode']) && str_contains($path, '/generated/')) {
+            return '(not watched: dev)';
+        }
+        return '(missing)';
     }
 }

@@ -62,4 +62,21 @@ class ActionsTest extends TestCase
         );
         $this->assertSame('x', $items[0]['message']);
     }
+
+    public function testEveryPostActionHasAConfirmSoTheGridSendsAPost(): void
+    {
+        $actions = $this->column()->prepareDataSource([
+            'data' => ['items' => [['group_id' => '9']]],
+        ])['data']['items'][0]['actions'];
+
+        foreach ($actions as $key => $action) {
+            if (empty($action['post'])) {
+                continue;
+            }
+            $this->assertNotSame('', (string)($action['confirm']['title'] ?? ''), $key . ' needs a confirm title');
+            $this->assertNotSame('', (string)($action['confirm']['message'] ?? ''), $key . ' needs a confirm message');
+        }
+        $this->assertSame('Resolve error', (string)$actions['resolve']['confirm']['title']);
+        $this->assertSame('Ignore error', (string)$actions['ignore']['confirm']['title']);
+    }
 }
