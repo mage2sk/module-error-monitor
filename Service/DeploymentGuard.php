@@ -129,9 +129,9 @@ class DeploymentGuard
             return [];
         }
         $candidates = [$root . '/pub/static/deployed_version.txt'];
-        // In developer mode Magento writes generated/ on almost every request,
-        // which kept capture paused most of the time.
-        if (!$this->isDeveloperMode()) {
+        // Outside production mode Magento generates classes on demand and writes
+        // generated/ on almost every request, which kept capture paused.
+        if ($this->watchesGenerated()) {
             $candidates[] = $root . '/generated/code';
             $candidates[] = $root . '/generated/metadata';
         }
@@ -148,12 +148,17 @@ class DeploymentGuard
         return $out;
     }
 
-    private function isDeveloperMode(): bool
+    private function watchesGenerated(): bool
+    {
+        return $this->appMode() === AppState::MODE_PRODUCTION;
+    }
+
+    private function appMode(): string
     {
         try {
-            return $this->appState->getMode() === AppState::MODE_DEVELOPER;
+            return (string)$this->appState->getMode();
         } catch (\Throwable $e) {
-            return false;
+            return AppState::MODE_PRODUCTION;
         }
     }
 
@@ -201,6 +206,8 @@ class DeploymentGuard
     public function resume(): void
     {
         $this->flagManager->deleteFlag(self::PAUSE_FLAG);
+        $this->flagManager->deleteFlag(self::AUTO_PAUSE_UNTIL_FLAG);
+        $this->autoDetectedCache = null;
     }
 
     public function resetAutoDetect(): void
@@ -245,12 +252,13 @@ class DeploymentGuard
         return [
             'maintenance'       => $maintenance,
             'paused_until'      => $paused > time() ? $paused : null,
-            'auto_pause_until'  => $autoPauseUntil > time() ? $autoPauseUntil : null,
+            'auto_pause_until'  => $autoSuspended && $autoPauseUntil > time() ? $autoPauseUntil : null,
             'auto_pause_reason' => (string)$this->autoDetectedReason,
             'watched_mtimes'    => $watched,
             'last_seen_mtimes'  => $lastSeen,
             'window_minutes'    => $this->resolveWindowMinutes(),
-            'developer_mode'    => $this->isDeveloperMode(),
+            'app_mode'          => $this->appMode(),
+            'generated_watched' => $this->watchesGenerated(),
             'suspended'         => $maintenance || ($paused > time()) || $autoSuspended,
         ];
     }

@@ -143,6 +143,16 @@ class EmailNotifierTest extends TestCase
         $this->assertSame('Europe/London', $vars['timezone']);
     }
 
+    public function testStoreNameIsTrimmedInSubject(): void
+    {
+        $notifier = $this->notifier($this->storeManager($this->store(3, ' Main Shop ')));
+        $this->assertTrue($notifier->send([new DataObject(['group_id' => 1])]));
+
+        $vars = $this->call('setTemplateVars')[1];
+        $this->assertSame('[Main Shop] Error Monitor: 1 error group in the last 24 hours', $vars['subject']);
+        $this->assertSame('Main Shop', $vars['site_name']);
+    }
+
     public function testSingularSubjectAndFirstStoreFallback(): void
     {
         $notifier = $this->notifier($this->storeManager(null, [$this->store(6, 'Other')]));

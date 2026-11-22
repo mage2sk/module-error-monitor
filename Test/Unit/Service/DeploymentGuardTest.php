@@ -306,7 +306,7 @@ class DeploymentGuardTest extends TestCase
     {
         $guard = $this->guard();
         $guard->resume();
-        $this->assertSame([DeploymentGuard::PAUSE_FLAG], $this->deleted);
+        $this->assertSame([DeploymentGuard::PAUSE_FLAG, DeploymentGuard::AUTO_PAUSE_UNTIL_FLAG], $this->deleted);
 
         $this->deleted = [];
         $guard->resetAutoDetect();
@@ -355,7 +355,7 @@ class DeploymentGuardTest extends TestCase
         $this->assertTrue($this->guard()->isCaptureSuspended());
     }
 
-    public function testDefaultModeStillWatchesGeneratedCode(): void
+    public function testDefaultModeIgnoresGeneratedFolderChanges(): void
     {
         $this->mode = AppState::MODE_DEFAULT;
         $this->baseline(time() - 3600);
@@ -363,6 +363,41 @@ class DeploymentGuardTest extends TestCase
         touch($this->root . '/generated/metadata', time() - 3600);
         touch($this->root . '/generated/code', time() - 5);
 
-        $this->assertTrue($this->guard()->isCaptureSuspended());
+        $guard = $this->guard();
+
+        $this->assertFalse($guard->isCaptureSuspended());
+        $status = $guard->status();
+        $this->assertSame(AppState::MODE_DEFAULT, $status['app_mode']);
+        $this->assertFalse($status['generated_watched']);
+    }
+
+    public function testProductionModeReportsGeneratedWatched(): void
+    {
+        $status = $this->guard()->status();
+        $this->assertSame(AppState::MODE_PRODUCTION, $status['app_mode']);
+        $this->assertTrue($status['generated_watched']);
+    }
+
+    public function testStaleAutoPauseFlagIsNotReportedWhenWindowIsZero(): void
+    {
+        $this->windowMinutes = '0';
+        $this->flags[DeploymentGuard::AUTO_PAUSE_UNTIL_FLAG] = time() + 600;
+
+        $status = $this->guard()->status();
+
+        $this->assertNull($status['auto_pause_until']);
+        $this->assertFalse($status['suspended']);
+    }
+
+    public function testResumeEndsAnActiveAutoPause(): void
+    {
+        $this->flags[DeploymentGuard::AUTO_PAUSE_UNTIL_FLAG] = time() + 600;
+        $guard = $this->guard();
+        $this->assertTrue($guard->isCaptureSuspended());
+
+        $guard->resume();
+
+        $this->assertFalse($guard->isCaptureSuspended());
+        $this->assertNull($guard->status()['auto_pause_until']);
     }
 }
