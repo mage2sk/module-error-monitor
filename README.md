@@ -38,7 +38,7 @@ Composer constraints from `composer.json`: `magento/framework ^103.0`, `magento/
 
 ## Requirements
 
-- Magento Open Source or Adobe Commerce 2.4.4 to 2.4.8.
+- Magento Open Source or Adobe Commerce 2.4.4 to 2.4.9.
 - PHP 8.1, 8.2, 8.3 or 8.4.
 - `mage2kishan/module-core` (module `Panth_Core`), required with no version constraint. It provides the `Panth\Core\Helper\AbstractConfig` base class used by the configuration helper and the parent admin menu item `Panth_Core::panth_extensions`.
 - A working Magento cron for the summary email and the cleanup job.
