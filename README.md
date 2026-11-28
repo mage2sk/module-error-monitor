@@ -6,6 +6,8 @@ Administrators review the groups in an admin grid with Resolve, Ignore and Delet
 
 Product page: [kishansavaliya.com/magento-2-error-monitor.html](https://kishansavaliya.com/magento-2-error-monitor.html)
 
+Built by [Kishan Savaliya](https://kishansavaliya.com/about). Need it installed or customised, or need other Magento 2 work? [Hire me](https://kishansavaliya.com/hire-me).
+
 ## Features
 
 - Captures PHP log records at or above a configurable severity through a Monolog handler registered on `Magento\Framework\Logger\Monolog`; exceptions attached to the log record supply class, file, line and stack trace.
@@ -399,7 +401,7 @@ These steps leave the `panth_error_group` and `panth_error_event` tables, the co
 ## Support
 
 - Product page: [kishansavaliya.com/magento-2-error-monitor.html](https://kishansavaliya.com/magento-2-error-monitor.html)
-- Contact form: [kishansavaliya.com/contact](https://kishansavaliya.com/contact)
+- Contact: [kishansavaliya.com/contact](https://kishansavaliya.com/contact)
 - Email: kishansavaliyakb@gmail.com
 - GitHub issues: [github.com/mage2sk/module-error-monitor/issues](https://github.com/mage2sk/module-error-monitor/issues)
 
